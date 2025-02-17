@@ -1,0 +1,94 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GameLauncher.MainView"
+        xmlns:vm="clr-namespace:GameLauncher.ViewModels;assembly=GameLauncher"
+        xmlns:gameLauncher="clr-namespace:GameLauncher"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding Windowtitle}"
+        Width="1920" Height="1080">
+    
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+    
+    <Window.Resources>
+        <vm:MainViewModel x:Key="MainViewModel"/>
+    </Window.Resources>
+
+    
+    <Grid Background="LightBlue" RowDefinitions="Auto,*">
+        <Border Background="Red" Height="80" VerticalAlignment="Top" Padding="10" Margin="20" Grid.Row="0">
+            <Grid ColumnDefinitions="*, Auto, Auto">
+                <TextBlock Text="Game Launcher des Coolen Typs (Paul)" FontSize="50"/>
+                <gameLauncher:FriendOverlayView Grid.Column="1"/>
+                <gameLauncher:AccountManagementView Grid.Column="2"/>
+            </Grid>
+        </Border>
+
+        <Border Background="Beige" Margin="20" Grid.Row="1">
+            <Grid ColumnDefinitions="Auto, *">
+                
+                <Border Background="Chartreuse" Grid.Column="0" Margin="0, 0, 20, 0" Padding="20">
+                    <Grid RowDefinitions="Auto, *">
+                        <TextBlock Text="Game Selection" FontSize="40" Margin="0 0 0 20"/>
+                        <StackPanel Grid.Row="1" Spacing="12">
+                            <TextBlock Text="{Binding Loadingtext}" IsVisible="{Binding VisibilityStatus}" HorizontalAlignment="Stretch" FontSize="40"></TextBlock>
+                            <TextBlock Text="{Binding ServerErrorText}" IsVisible="{Binding IsServerError}" HorizontalAlignment="Stretch" FontSize="40"></TextBlock>
+                            
+                            <Expander Header="Available Offline" IsExpanded="True" HorizontalAlignment="Stretch">
+                                <ItemsControl ItemsSource="{Binding OfflineGameList}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding Name}" 
+                                                    FontSize="30" 
+                                                    Margin="5" 
+                                                    Click="ChooseGame" 
+                                                    Tag="{Binding }"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                            
+                            <Expander Header="Only Available with an Internet Connection" IsExpanded="True" HorizontalAlignment="Stretch">
+                                <ItemsControl ItemsSource="{Binding OnlineGameList}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding Name}" 
+                                                    FontSize="30" Margin="5" 
+                                                    Click="ChooseGame" 
+                                                    Tag="{Binding }"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Expander>
+                            
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
+                <Border Background="Blue" Grid.Column="1">
+                    <Grid RowDefinitions="*, Auto">
+                        
+                        <TextBlock Text="{Binding Loadingtext}" IsVisible="{Binding VisibilityStatus}" FontSize="100" HorizontalAlignment="Center" Margin="15"/>
+                        <TextBlock Grid.Row="0" Text="{Binding SelectedGame}" IsVisible="{Binding !VisibilityStatus}" FontSize="100" HorizontalAlignment="Center" Margin="15"></TextBlock>
+                        <TextBlock Grid.Row="0" Text="{Binding ServerErrorText}" IsVisible="{Binding IsServerError}" HorizontalAlignment="Stretch" FontSize="40"></TextBlock>
+                        <Button Grid.Row="1" 
+                                HorizontalAlignment="Right" 
+                                Margin="100" 
+                                Click="LauncherGameCommand" 
+                                Tag="{Binding GameTag}"
+                                IsEnabled="{Binding ButtonEnabled}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding PlayButtonText}" FontSize="80"></TextBlock> 
+                                <TextBlock Text="{Binding DownloadStatus}" IsVisible="{Binding IsDownloading}"></TextBlock>
+                                <TextBlock Text="{Binding LastPatch}" IsVisible="{Binding !VisibilityStatus}"></TextBlock>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+    
+
+</Window>

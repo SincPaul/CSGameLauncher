@@ -1,0 +1,43 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:GameLauncher.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="vm:MainViewModel"
+             x:Class="GameLauncher.FriendOverlayView">
+    <Grid>
+        
+    <Button Grid.Column="0" Content="Friends" FontSize="40" Click="OpenFriendMenu"></Button>
+    <Popup Name="FriendPopup" 
+           IsOpen="{Binding IsFriendMenuVisible}" 
+           HorizontalAlignment="Center" 
+           VerticalAlignment="Center">
+                        <Border Background="Black" 
+                                Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="Friends List" FontSize="30" Foreground="White"/>
+                                <ListBox IsVisible="{Binding IsServerConnectedAndUserLoggedIn}" >
+                                    <ItemsControl ItemsSource="{Binding FriendList}" >
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <ListBoxItem>
+                                                    <Button Content="{Binding DisplayName}" Click="OpenFriendConfig" Tag="{Binding UserId}"></Button>
+                                                </ListBoxItem>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ListBox>
+                                <Grid IsVisible="{Binding IsServerConnectedAndUserNotLoggedIn}" RowDefinitions="*, *, Auto">
+                                    <TextBlock Grid.Row="0" Text="Please log in or Register to view and manage your Friends"></TextBlock>
+                                    <Button Grid.Row="1" Content="Log In" Click="LogIn"></Button>
+                                    <Button Grid.Row="2" Content="Register" Click="Register"></Button>
+                                </Grid>
+                                <TextBlock Text="Couldnt connect to the Server, please try again later" IsVisible="{Binding !IsServerConnected}"></TextBlock>
+                                <Button Content="Close" Click="CloseFriendMenu" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
+    </Grid>
+
+</UserControl>
