@@ -2,13 +2,18 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:GameLauncher.ViewModels"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="GameLauncher.RegisterWindow"
+        x:Class="GameLauncher.Windows.RegisterWindow"
+        x:DataType="vm:MainViewModel"
         Title="RegisterWindow">
+    
     <StackPanel>
-        <TextBlock Text="Log In"></TextBlock>
+        <TextBlock Text="Register" IsVisible="{Binding IsLoggedIn}"></TextBlock>
         <TextBox Name="Username" Watermark="Enter your Username"></TextBox>
+        <TextBox Name="Email" Watermark="Enter your Email Address"></TextBox>
         <TextBox Name="Password" PasswordChar="*" Watermark="Enter your password"></TextBox>
-        <Button Content="Log In" Click="LogIn"></Button>
+        <TextBox Name="PasswordRepeat" PasswordChar="*" Watermark="Repeat your password"></TextBox>
+        <Button Content="Register" Click="Register"></Button>
     </StackPanel>
 </Window>

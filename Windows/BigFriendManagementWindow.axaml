@@ -1,0 +1,108 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:GameLauncher.ViewModels"
+        xmlns:converters="clr-namespace:GameLauncher.Converters"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="GameLauncher.Windows.BigFriendManagementWindow"
+        x:DataType="vm:MainViewModel"
+        Title="BigFriendManagement">
+    
+    <Window.Resources>
+        <converters:RelativeTimeAgoConverter x:Key="RelativeTimeConverter"></converters:RelativeTimeAgoConverter>
+        <vm:MainViewModel x:Key="MainViewModel"></vm:MainViewModel>
+    </Window.Resources>
+    
+    <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+    <TabItem Header="Friends">
+        <TabItem.Content>
+            <ListBox>
+                <ItemsControl ItemsSource="{Binding FriendList}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ListBoxItem>
+                                <Border Padding="15" Background="Gray" Margin="5">
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <TextBlock Text="{Binding Status}" FontSize="20"></TextBlock>
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="20"></TextBlock>
+                                        <Button Grid.Column="2" Content="..." Click="ManageFriend" FontSize="20" Tag="{Binding UserId}"></Button>
+                                    </Grid> 
+                                </Border>
+                            </ListBoxItem>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ListBox>
+        </TabItem.Content>
+    </TabItem>
+    <TabItem Header="Friend Requests">
+        <TabItem.Content>
+            <Grid RowDefinitions="Auto, *" ColumnDefinitions="Auto, *">
+                <TextBox Text="{Binding EnteredFriendUsername, UpdateSourceTrigger=PropertyChanged}" Name="AddFriendInput" Watermark="Input User Username"></TextBox>
+                <Button Grid.Row="0" Grid.Column="1" Content="Add" Command="{Binding AddFriendCommand}"></Button>
+                <Border Grid.Row="1" Grid.Column="0" Margin="15">
+                    <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <TabItem Header="Received Friend Requests">
+                            <TabItem.Content>
+                                <ListBox>
+                                    <ItemsControl ItemsSource="{Binding ReceivedFriendRequests}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Margin="5" HorizontalAlignment="Stretch" Click="ShowUser">
+                                                    <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
+                                                        <TextBlock Text="{Binding UserName}" Margin="0 0 10 0"></TextBlock>
+                                                        <TextBlock Grid.Column="1" 
+                                                                   Text="{Binding TimeSentTimestamp, Converter={StaticResource RelativeTimeConverter}}"
+                                                                   FontSize="15"
+                                                                   Foreground="Gray"></TextBlock>
+                                                        <Button Grid.Column="2" Content="Accept"
+                                                                Command="{Binding Source={StaticResource MainViewModel}, Path=AcceptFriendRequestCommand}"
+                                                                CommandParameter="{Binding UserId}" />
+                                                        <Button Grid.Column="3" Content="Decline" 
+                                                                Command="{Binding Source={StaticResource MainViewModel}, 
+                                                                Path=DeclineFriendRequestCommand}" 
+                                                                CommandParameter="{Binding UserId}"></Button>
+                                                        <Button Grid.Column="4" Content="Block" 
+                                                                Command="{Binding Source={StaticResource MainViewModel}, 
+                                                                Path=BlockUserCommand}" 
+                                                                CommandParameter="{Binding UserId}"></Button>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ListBox>
+                            </TabItem.Content>
+                        </TabItem>
+                        <TabItem Header="Sent Friend Requests">
+                            <TabItem.Content>
+                                <ListBox>
+                                    <ItemsControl ItemsSource="{Binding SentFriendRequests}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Margin="5" HorizontalAlignment="Stretch" Click="ShowUser">
+                                                    <Grid ColumnDefinitions="*, Auto">
+                                                        <TextBlock Text="{Binding UserName}"></TextBlock>
+                                                        <Button Grid.Column="1" Content="Cancel" 
+                                                                Command="{Binding Source={StaticResource MainViewModel}, Path=CancelFriendRequestCommand}" 
+                                                                CommandParameter="{Binding UserId}"></Button>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ListBox>
+                            </TabItem.Content>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </Grid>
+        </TabItem.Content>
+    </TabItem>
+    <TabItem Header="Blocked Users">
+        <!-- Content for Blocked Users -->
+    </TabItem>
+</TabControl>
+
+</Window>

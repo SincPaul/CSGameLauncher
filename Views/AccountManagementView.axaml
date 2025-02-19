@@ -5,7 +5,7 @@
              xmlns:vm="clr-namespace:GameLauncher.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="vm:MainViewModel"
-             x:Class="GameLauncher.AccountManagementView">
+             x:Class="GameLauncher.Views.AccountManagementView">
     <Grid>
         <Button Content="Account" FontSize="40" Click="OpenAccountMenu"></Button>
         <Popup Name="AccountManagementPopup"
@@ -16,7 +16,7 @@
                 <Grid RowDefinitions="*, *, Auto">
                     <TextBlock Text="Account Settings"></TextBlock>
                     <StackPanel Grid.Row="1" IsVisible="{Binding IsServerConnectedAndUserLoggedIn}">
-                        <Button Content="Log Out"></Button>
+                        <Button Content="Log Out" Click="LogOut"></Button>
                         <Button Content="Change Displayname"></Button>
                         <Button Content="Change Password"></Button>
                     </StackPanel>

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using GameLauncher.ViewModels;
+using GameLauncher.Views;
 
 namespace GameLauncher;
 

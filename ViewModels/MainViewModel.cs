@@ -1,9 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GameLauncher.Functions;
+using GameLauncher.Windows;
 
 namespace GameLauncher.ViewModels
 {
@@ -21,42 +22,47 @@ namespace GameLauncher.ViewModels
 
         public string PlayButtonText { get; set; } = "Loading Games";
 
-        public bool VisibilityStatus => _isloading;
+        public bool VisibilityStatus => Isloading;
 
-        public int GameId { get; set; } = -1;
-        
-        public ServerCommunication.GameStats? GameTag { get; set; } 
+        public ServerCommunication.GameStats? GameTag { get; set; }
 
-        public ObservableCollection<ServerCommunication.GameStats> GameList { get; } = [];
+        private ObservableCollection<ServerCommunication.GameStats> GameList { get; } = [];
         public ObservableCollection<ServerCommunication.GameStats> OfflineGameList { get; } = [];
         public ObservableCollection<ServerCommunication.GameStats> OnlineGameList { get; } = [];
         
-        public List<FriendUtils.Friend> FriendList { get; } = FriendUtils.GetFriends();
+        public ObservableCollection<FriendUtils.Friend> FriendList { get; set; } = [];
         
+        public ObservableCollection<FriendUtils.ReceivedFriendRequest> ReceivedFriendRequests { get; set; } = [];
+        public ObservableCollection<FriendUtils.SentFriendRequest> SentFriendRequests { get; set; } = [];
+        
+        public ObservableCollection<FriendUtils.User> BlockedUsers { get; set; } = [];
+        public string FriendRequestsAmountWithText { get; set; } = "Friend Requests (0)";
         public string LastPatch { get; set; } = string.Empty;
 
         public string SelectedGame { get; set; } = string.Empty;
         
         public string DownloadStatus { get; set; } = string.Empty;
         
-        public bool IsDownloading { get; set; } = false;
+        public bool IsDownloading { get; set; }
         
-        public bool IsServerError { get; set; } = false;
+        public bool IsServerError { get; set; }
         
         public string ServerErrorText { get; set; } = "Couldnt connect to server";
         
-        public bool IsServerConnected { get; set; } = false;
-        public bool IsServerConnectedAndUserLoggedIn { get; set; } = false;
-        public bool IsServerConnectedAndUserNotLoggedIn { get; set; } = false;
+        public bool IsServerConnected { get; set; }
+        public bool IsServerConnectedAndUserLoggedIn { get; set; }
+        public bool IsServerConnectedAndUserNotLoggedIn { get; set; }
         
-        public bool ButtonEnabled { get; set; } = false;
-        public bool IsFriendMenuVisible { get; set; } = false;
-        public bool IsLoggedIn { get; set; } = false;
+        public bool ButtonEnabled { get; set; }
+        public bool IsFriendMenuVisible { get; set; }
+        public bool IsLoggedIn { get; set; }
+        public bool IsAddingFriend { get; set; }
+        
         
         [RelayCommand]
         private void SwapLoadingStatus()
         {
-            _isloading = !_isloading;
+            Isloading = !Isloading;
             OnPropertyChanged(nameof(PlayButtonText));
             OnPropertyChanged(nameof(VisibilityStatus));
             OnPropertyChanged(nameof(SelectedGame));
@@ -74,7 +80,6 @@ namespace GameLauncher.ViewModels
             
             Console.WriteLine(timeSinceUpload);
             Console.WriteLine(LastPatch);
-            GameId = game.Id;
             GameTag = game;
             if (game.ForceNewVersion)
             {
@@ -131,24 +136,24 @@ namespace GameLauncher.ViewModels
             return $"{(int)timeSpan.TotalSeconds} second{(timeSpan.TotalSeconds >= 2 ? "s" : "")}";
         }
         
-        public void UpdateDownloadProgress(long LastSecondBytesReceived, long TotalBytesReceived, long TotalBytesToReceive)
+        public void UpdateDownloadProgress(long lastSecondBytesReceived, long totalBytesReceived, long totalBytesToReceive)
         {
             long downloadSpeed = 0;
             var eta = TimeSpan.Zero;
-            if (LastSecondBytesReceived != 0)
+            if (lastSecondBytesReceived != 0)
             {
-                downloadSpeed = LastSecondBytesReceived / 1024;
-                eta = TimeSpan.FromSeconds((TotalBytesToReceive - TotalBytesReceived) / LastSecondBytesReceived);
+                downloadSpeed = lastSecondBytesReceived / 1024;
+                eta = TimeSpan.FromSeconds((totalBytesToReceive - totalBytesReceived) / lastSecondBytesReceived);
             }
             var downloadSpeedText = downloadSpeed > 1024 ? $"{downloadSpeed / 1024} MB/s" : $"{downloadSpeed} KB/s";
-            var downloadProgressPercent = (double)TotalBytesReceived / TotalBytesToReceive * 100;
-            var downloadProgressReceived = TotalBytesReceived >= 1024 * 1024 * 1024 ? $"{TotalBytesReceived / (1024 * 1024 * 1024.0):0.00} GB"
-                    : TotalBytesReceived >= 1024 * 1024 ? $"{TotalBytesReceived / (1024 * 1024.0):0.00} MB" 
-                    : TotalBytesReceived >= 1024 ? $"{TotalBytesReceived / 1024.0:0.00} KB" : $"{TotalBytesReceived} Bytes";
-                var downloadProgressTotal = TotalBytesToReceive >= 1024 * 1024 * 1024 ? $"{TotalBytesToReceive / (1024 * 1024 * 1024.0):0.00} GB" 
-                    : TotalBytesToReceive >= 1024 * 1024 ? $"{TotalBytesToReceive / (1024 * 1024.0):0.00} MB" 
-                    : TotalBytesToReceive >= 1024 ? $"{TotalBytesToReceive / 1024.0:0.00} KB" 
-                    : $"{TotalBytesToReceive} Bytes";
+            var downloadProgressPercent = (double)totalBytesReceived / totalBytesToReceive * 100;
+            var downloadProgressReceived = totalBytesReceived >= 1024 * 1024 * 1024 ? $"{totalBytesReceived / (1024 * 1024 * 1024.0):0.00} GB"
+                    : totalBytesReceived >= 1024 * 1024 ? $"{totalBytesReceived / (1024 * 1024.0):0.00} MB" 
+                    : totalBytesReceived >= 1024 ? $"{totalBytesReceived / 1024.0:0.00} KB" : $"{totalBytesReceived} Bytes";
+                var downloadProgressTotal = totalBytesToReceive >= 1024 * 1024 * 1024 ? $"{totalBytesToReceive / (1024 * 1024 * 1024.0):0.00} GB" 
+                    : totalBytesToReceive >= 1024 * 1024 ? $"{totalBytesToReceive / (1024 * 1024.0):0.00} MB" 
+                    : totalBytesToReceive >= 1024 ? $"{totalBytesToReceive / 1024.0:0.00} KB" 
+                    : $"{totalBytesToReceive} Bytes";
             
             var downloadProgressText = $"{downloadProgressPercent:0.00}%";
             DownloadStatus = $"Downloaded {downloadProgressReceived} of {downloadProgressTotal} - {downloadProgressText} - {downloadSpeedText} - ETA: {FormatTimeSpan(eta)}";
@@ -242,6 +247,118 @@ namespace GameLauncher.ViewModels
 
             OnPropertyChanged(nameof(IsServerConnectedAndUserLoggedIn));
             OnPropertyChanged(nameof(IsServerConnectedAndUserNotLoggedIn));
+        }
+        
+        public void SetLoggedIn(bool isLoggedIn)
+        {
+            IsLoggedIn = isLoggedIn;
+            UpdateUserStatus(isLoggedIn);
+            OnPropertyChanged(nameof(IsLoggedIn));
+        }
+
+        public void ToggleFriendAddMenu(bool openStatus)
+        {
+            IsAddingFriend = openStatus;
+            OnPropertyChanged(nameof(IsAddingFriend));
+        }
+        
+        public string EnteredFriendUsername { get; set; } = string.Empty;
+
+        [RelayCommand]
+        private async Task AcceptFriendRequest(string userId)
+        {
+            Console.WriteLine("Acception friend request");
+            try
+            {
+                var viewModel = this;
+                await FriendUtils.AcceptFriendRequest(userId, viewModel);
+                //updateUI();
+            } 
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to accept friend request: " + ex.Message);
+                Console.WriteLine("Failed to accept friend request: " + ex.Message);
+            }
+        }
+
+        [RelayCommand]
+        private async Task CancelFriendRequest(string userId)
+        {
+            Console.WriteLine("Canceling friend request");
+            try
+            {
+                var viewModel = this;
+                Console.WriteLine(viewModel);
+                await FriendUtils.CancelFriendRequest(userId, viewModel);
+                //updateUI();
+            } 
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to cancel friend request: " + ex.Message);
+                Console.WriteLine("Failed to cancel friend request: " + ex.Message);
+            }
+        }
+        
+        
+        [RelayCommand]
+        private async Task AddFriend()
+        {
+            Console.WriteLine("Adding friend.");
+            var enteredUsername = EnteredFriendUsername;
+            Console.WriteLine(enteredUsername);
+            if (enteredUsername == "") return;
+            try
+            {
+                var viewModel = this;
+                Console.WriteLine(viewModel);
+                await FriendUtils.SentFriendRequestToServer(enteredUsername, viewModel);
+            } 
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to add friend: " + ex.Message);
+            }
+            EnteredFriendUsername = string.Empty;
+            OnPropertyChanged(nameof(EnteredFriendUsername));
+        }
+
+        [RelayCommand]
+        private async Task DeclineFriendRequest(string userId)
+        {
+            Console.WriteLine("Declining friend request");
+            try
+            {
+                var viewModel = this;
+                await FriendUtils.DeclineFriendRequest(userId, viewModel);
+                //updateUI();
+            } 
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to decline friend request: " + ex.Message);
+                Console.WriteLine("Failed to decline friend request: " + ex.Message);
+            }
+        }
+        
+        [RelayCommand]
+        private async Task BlockUser(string userId)
+        {
+            Console.WriteLine("Blocking user");
+            try
+            {
+                var viewModel = this;
+                await FriendUtils.BlockUser(userId, viewModel);
+            } 
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to block user: " + ex.Message);
+                Console.WriteLine("Failed to block user: " + ex.Message);
+            }
+        }
+
+        public void UpdateFriendRequestText()
+        {
+            var friendRequestAmount = ReceivedFriendRequests.Count;
+            FriendRequestsAmountWithText = $"Friend Requests ({friendRequestAmount})";
+            OnPropertyChanged(nameof(FriendRequestsAmountWithText));
         }
     }
 }

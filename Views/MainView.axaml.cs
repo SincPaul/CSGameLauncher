@@ -5,14 +5,13 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using GameLauncher.Functions;
 using GameLauncher.ViewModels;
+using GameLauncher.Windows;
 
-namespace GameLauncher
+namespace GameLauncher.Views
 {
     public partial class MainView : Window
     {
         private static ObservableCollection<ServerCommunication.GameStats> Games { get; } = [];
-
-        public bool IsLoading { get; set; } = true;
 
         public MainView()
         {
@@ -21,7 +20,7 @@ namespace GameLauncher
             Loaded += LoadedMainView;
         }
 
-        public void LoadedMainView(object? sender, RoutedEventArgs e)
+        private void LoadedMainView(object? sender, RoutedEventArgs e)
         {
             InitializeData();
         }
@@ -31,32 +30,34 @@ namespace GameLauncher
             try
             {
                 // await Task.Delay(10000);
-                var viewModel = DataContext as MainViewModel;
-                await ServerCommunication.HandleWebsockets(viewModel);
+                if (DataContext is not MainViewModel viewModel) return;
+                _ = Task.Run(() => ServerCommunication.HandleWebsockets(viewModel));
                 Console.WriteLine(viewModel);
+
                 await LoadGamesAsync(viewModel);
-                SwapLoading(null, null);
+                await UserUtils.CreateUser(viewModel);
+                await FriendUtils.LoadFriendStuff(viewModel);
+                
+
+
+                SwapLoading();
                 Console.WriteLine("Finished loading Games");
 
                 (DataContext as MainViewModel)?.ShowGames(Games);
 
                 if (Games.Count > 0)
                 {
-                    (DataContext as MainViewModel)?.SwapMainGameCommand?.Execute(Games[0]);
+                    (DataContext as MainViewModel)?.SwapMainGameCommand.Execute(Games[0]);
                 }
             }
             catch (Exception e)
             {
-                throw new Exception("Failed to load games: " + e.Message);
+                Console.WriteLine("Failed to initialize data: " + e.Message);
             }
         }
         
         private async Task LoadGamesAsync(MainViewModel viewModel)
         {
-            if (viewModel == null) {
-                Console.WriteLine("AHHHHHHHHHHHHHHHHHHHHHHHH");
-                return;
-            }
             Console.WriteLine(viewModel);
             var gamesFromServer = await ServerCommunication.CheckServerGames(viewModel);
             var localGames = await GameUtils.GetLocalGames();
@@ -80,24 +81,24 @@ namespace GameLauncher
                 if (isLocalGame) continue;
                 Games.Add(game);
                 Console.WriteLine(game);
+                ToastNotification.Show(game.Name, -1);
                 Console.WriteLine("Game added: " + game.Name);
             }
             Console.WriteLine(Games);
-            IsLoading = false;
         }
 
-        private void SwapLoading(object? sender, RoutedEventArgs? e)
+        private void SwapLoading()
         {
             Console.WriteLine("Swapping loading status.");
             
-            (DataContext as MainViewModel)?.SwapLoadingStatusCommand?.Execute(null);
+            (DataContext as MainViewModel)?.SwapLoadingStatusCommand.Execute(null);
         }
 
         private void ChooseGame(object? sender, RoutedEventArgs e)
         {
             var game = (sender as Button)?.Tag as ServerCommunication.GameStats;
             Console.WriteLine(DataContext as MainViewModel);
-            (DataContext as MainViewModel)?.SwapMainGameCommand?.Execute(game);
+            (DataContext as MainViewModel)?.SwapMainGameCommand.Execute(game);
         }
 
         private async void LauncherGameCommand(object? sender, RoutedEventArgs e)

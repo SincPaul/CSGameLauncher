@@ -8,7 +8,7 @@ namespace GameLauncher;
 
 class Program
 {
-    public static string BasePath = AppDomain.CurrentDomain.BaseDirectory; //@"C:\Users\Geisthardt\AppData\Local\Programs\PaulsGameLauncher";
+    public static readonly string BasePath = AppDomain.CurrentDomain.BaseDirectory; //@"C:\Users\Geisthardt\AppData\Local\Programs\PaulsGameLauncher";
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.

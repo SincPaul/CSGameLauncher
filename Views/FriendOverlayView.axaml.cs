@@ -1,11 +1,10 @@
 ﻿using System;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using GameLauncher.ViewModels;
+using GameLauncher.Windows;
 
-namespace GameLauncher;
+namespace GameLauncher.Views;
 
 public partial class FriendOverlayView : UserControl
 {
@@ -30,21 +29,60 @@ public partial class FriendOverlayView : UserControl
 
     private void OpenFriendConfig(object? sender, RoutedEventArgs e)
     {
-        throw new NotImplementedException();
+        Console.WriteLine("Opening friend config.");
     }
 
     private void LogIn(object? sender, RoutedEventArgs e)
     {
-        throw new NotImplementedException();
-        //var OwnerWindow = (Window) this.VisualRoot;
-        //var loginWindow = new LoginWindow();
-        //loginWindow.ShowDialog(OwnerWindow);
+        var ownerWindow = (Window) this.VisualRoot!;
+        var mainViewModel = (DataContext as MainViewModel);
+        if (mainViewModel == null)
+        {
+            ToastNotification.Show("Failed to open log in window.");
+            return;
+        }
+        var window = new LogInWindow(mainViewModel);
+        window.ShowDialog(ownerWindow);
+        // throw new NotImplementedException();
     }
 
     private void Register(object? sender, RoutedEventArgs e)
     {
-        throw new NotImplementedException();
+        var ownerWindow = (Window) this.VisualRoot!;
+        var mainViewModel = (DataContext as MainViewModel);
+        if (mainViewModel == null)
+        {   
+            ToastNotification.Show("Failed to open register window.");
+            return;
+        }
+        var window = new RegisterWindow(mainViewModel);
+        window.ShowDialog(ownerWindow);
     }
-        
 
+
+    
+
+    private void OpenAddFriendMenu(object? sender, RoutedEventArgs e)
+    {
+        Console.WriteLine("Opening add friend menu.");
+        (DataContext as MainViewModel)?.ToggleFriendAddMenu(true);
+    }
+
+    private void CloseAddFriendMenu(object? sender, RoutedEventArgs e)
+    {
+        Console.WriteLine("Opening add friend menu.");
+        (DataContext as MainViewModel)?.ToggleFriendAddMenu(false);
+    }
+
+    private void OpenFriendRequestManagement(object? sender, RoutedEventArgs e)
+    {
+        var viewModel = DataContext as MainViewModel;
+        if (viewModel == null)
+        {
+            ToastNotification.Show("Failed to open friend request management window.");
+            return;
+        }
+        var bigFriendManagementWindow = new BigFriendManagementWindow(viewModel);
+        bigFriendManagementWindow.Show();
+    }
 }

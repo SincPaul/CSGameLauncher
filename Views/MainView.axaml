@@ -1,8 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="GameLauncher.MainView"
+        x:Class="GameLauncher.Views.MainView"
         xmlns:vm="clr-namespace:GameLauncher.ViewModels;assembly=GameLauncher"
         xmlns:gameLauncher="clr-namespace:GameLauncher"
+        xmlns:views="clr-namespace:GameLauncher.Views"
         x:DataType="vm:MainViewModel"
         Title="{Binding Windowtitle}"
         Width="1920" Height="1080">
@@ -20,8 +21,8 @@
         <Border Background="Red" Height="80" VerticalAlignment="Top" Padding="10" Margin="20" Grid.Row="0">
             <Grid ColumnDefinitions="*, Auto, Auto">
                 <TextBlock Text="Game Launcher des Coolen Typs (Paul)" FontSize="50"/>
-                <gameLauncher:FriendOverlayView Grid.Column="1"/>
-                <gameLauncher:AccountManagementView Grid.Column="2"/>
+                <views:FriendOverlayView Grid.Column="1"/>
+                <views:AccountManagementView Grid.Column="2"/>
             </Grid>
         </Border>
 

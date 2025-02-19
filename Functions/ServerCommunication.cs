@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -15,63 +16,123 @@ namespace GameLauncher.Functions
 {
     public static class ServerCommunication
     {
-        private const string ServerAddress = "http://10.31.1.41:80";
-        private const string WebsocketAddress = "ws://10.31.1.41:80";
+        public const string ServerAddress = "http://10.31.1.41:80";
+        public const string WebsocketAddress = "ws://10.31.1.41:80";
+        private static ClientWebSocket? _serverStatusWebSocket;
+        private static bool _isConnecting = false;
+        private static bool _receivedPong = true;
+        private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
 
         private static readonly Dictionary<string, Func<MainViewModel, string, Task>> WebsocketHandlers = new()
         {
-            { $"{WebsocketAddress}/Server/OnlineStatus", async (viewModel, address) => await CheckServerOnlineStatus(viewModel, address) },
+            { $"{WebsocketAddress}/Server/OnlineStatus", async (viewModel, address) => await MonitorServerStatus(viewModel, address) },
         };
 
-        private static async Task CheckServerOnlineStatus(MainViewModel viewModel, string address)
+        private static async Task MonitorServerStatus(MainViewModel viewModel, string address)
         {
-            var websocketAddress = new Uri(address);
+            while (true)
+            {
+                if (!viewModel.IsServerConnected)
+                {
+                    await TryConnect(viewModel, address);
+                }
+                else
+                {
+                    await SendPingAndCheckPong(viewModel);
+                }
+
+                await Task.Delay(PingInterval);
+            }
+        }
+
+        private static async Task TryConnect(MainViewModel viewModel, string address)
+        {
+            if (_isConnecting) return;
 
             try
             {
-                using var client = new ClientWebSocket();
-                await client.ConnectAsync(websocketAddress, CancellationToken.None);
+                _isConnecting = true;
+                _serverStatusWebSocket?.Dispose();
+                _serverStatusWebSocket = new ClientWebSocket();
+
+                var websocketAddress = new Uri(address);
+                await _serverStatusWebSocket.ConnectAsync(websocketAddress, CancellationToken.None);
                 viewModel.EnableServerConnection();
                 Console.WriteLine("Connected to WebSocket server.");
-            
-                var buffer = new byte[1024];
-                var segment = new ArraySegment<byte>(buffer);
-            
-                while (client.State == WebSocketState.Open)
-                {
-                    var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                    try
-                    {
-                        var result = await client.ReceiveAsync(segment, cts.Token);
-            
-                        if (result.MessageType == WebSocketMessageType.Close)
-                        {
-                            Console.WriteLine("WebSocket closed by server.");
-                            viewModel.DisableServerConnection();
-                            break;
-                        }
-            
-                        var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        Console.WriteLine("Received: " + message);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Console.WriteLine("Receive operation timed out.");
-                    }
-                }
+
+                _receivedPong = true; 
+                _ = ListenForMessages(viewModel); 
             }
             catch (Exception e)
             {
                 Console.WriteLine("Connection error: " + e.Message);
                 viewModel.DisableServerConnection();
+                await Task.Delay(ReconnectDelay);
+            }
+            finally
+            {
+                _isConnecting = false;
+            }
+        }
+
+        private static async Task SendPingAndCheckPong(MainViewModel viewModel)
+        {
+            if (_serverStatusWebSocket is not { State: WebSocketState.Open })
+            {
+                viewModel.DisableServerConnection();
+                return;
             }
 
-            // Schedule reconnection after 60 seconds
-            _ = Task.Run(async () =>
+            if (!_receivedPong)
             {
-                await Task.Delay(TimeSpan.FromMinutes(1));
-                await CheckServerOnlineStatus(viewModel, address);
-            });
+                Console.WriteLine("No Pong received, assuming disconnect.");
+                viewModel.DisableServerConnection();
+                return;
+            }
+
+            try
+            {
+                var buffer = Encoding.UTF8.GetBytes("ping");
+                await _serverStatusWebSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                //Console.WriteLine("Sent ping to WebSocket server.");
+
+                _receivedPong = false; // Reset until we get a response
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Ping failed: " + ex.Message);
+                viewModel.DisableServerConnection();
+            }
+        }
+
+        private static async Task ListenForMessages(MainViewModel viewModel)
+        {
+            var buffer = new byte[1024];
+
+            try
+            {
+                while (_serverStatusWebSocket is { State: WebSocketState.Open })
+                {
+                    var result = await _serverStatusWebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+
+                    if (message == "pong")
+                    {
+                        // Console.WriteLine("Received Pong from server.");
+                        _receivedPong = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Received unexpected message: " + message);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error receiving message: " + ex.Message);
+                viewModel.DisableServerConnection();
+            }
         }
 
 

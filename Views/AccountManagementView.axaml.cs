@@ -1,10 +1,10 @@
-﻿using System;
-using Avalonia;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
+using GameLauncher.Functions;
+using GameLauncher.ViewModels;
+using GameLauncher.Windows;
 
-namespace GameLauncher;
+namespace GameLauncher.Views;
 
 public partial class AccountManagementView : UserControl
 {
@@ -25,11 +25,35 @@ public partial class AccountManagementView : UserControl
 
     private void LogIn(object? sender, RoutedEventArgs e)
     {
-        throw new NotImplementedException();
+        var ownerWindow = (Window) this.VisualRoot!;
+        var mainViewModel = (DataContext as MainViewModel);
+        if (mainViewModel == null) return;
+        var window = new LogInWindow(mainViewModel);
+        window.ShowDialog(ownerWindow);
+        // throw new NotImplementedException();
     }
 
     private void Register(object? sender, RoutedEventArgs e)
     {
-        throw new NotImplementedException();
+        var ownerWindow = (Window) this.VisualRoot!;
+        var mainViewModel = (DataContext as MainViewModel);
+        if (mainViewModel == null)
+        {   
+            ToastNotification.Show("Failed to open register window.");
+            return;
+        }
+        var window = new RegisterWindow(mainViewModel);
+        window.ShowDialog(ownerWindow);
+    }
+
+    private void LogOut(object? sender, RoutedEventArgs e)
+    {
+        var mainViewModel = (DataContext as MainViewModel);
+        if (mainViewModel == null)
+        {
+            ToastNotification.Show("Failed to log out.");
+            return;
+        }
+        UserUtils.LogOut(mainViewModel);
     }
 }

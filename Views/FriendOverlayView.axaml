@@ -5,7 +5,7 @@
              xmlns:vm="clr-namespace:GameLauncher.ViewModels"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:DataType="vm:MainViewModel"
-             x:Class="GameLauncher.FriendOverlayView">
+             x:Class="GameLauncher.Views.FriendOverlayView">
     <Grid>
         
     <Button Grid.Column="0" Content="Friends" FontSize="40" Click="OpenFriendMenu"></Button>
@@ -18,6 +18,17 @@
                             <StackPanel>
                                 <TextBlock Text="Friends List" FontSize="30" Foreground="White"/>
                                 <ListBox IsVisible="{Binding IsServerConnectedAndUserLoggedIn}" >
+                                    <Grid ColumnDefinitions="Auto, Auto">
+                                        <Button Content="Add Friend" Click="OpenAddFriendMenu"></Button>
+                                        <Button Grid.Column="1" Content="{Binding FriendRequestsAmountWithText}" Click="OpenFriendRequestManagement"></Button>
+                                    </Grid>
+                                    
+                                    <Grid IsVisible="{Binding IsAddingFriend}" ColumnDefinitions="*, Auto" RowDefinitions="*, Auto">
+                                        <TextBox Text="{Binding EnteredFriendUsername, UpdateSourceTrigger=PropertyChanged}" Name="AddFriendInput" Watermark="Input User Username"></TextBox>
+                                        <Button Grid.Row="0" Grid.Column="1" Content="Add" Command="{Binding AddFriendCommand}"></Button>
+                                        <Button Grid.Row="1" Grid.Column="0" Content="Close" Click="CloseAddFriendMenu"></Button>
+                                    </Grid>
+                                    
                                     <ItemsControl ItemsSource="{Binding FriendList}" >
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
