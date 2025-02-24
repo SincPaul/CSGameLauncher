@@ -8,11 +8,15 @@
              x:Class="GameLauncher.Views.FriendOverlayView">
     <Grid>
         
-    <Button Grid.Column="0" Content="Friends" FontSize="40" Click="OpenFriendMenu"></Button>
+    <Button Grid.Column="0" Click="OpenFriendMenu">
+        <Svg Path="/Assets/FriendAssets/friends.svg" Width="40" Height="40" />
+    </Button>
     <Popup Name="FriendPopup" 
            IsOpen="{Binding IsFriendMenuVisible}" 
            HorizontalAlignment="Center" 
-           VerticalAlignment="Center">
+           VerticalAlignment="Center"
+           IsLightDismissEnabled="True"
+           LostFocus="CloseFriendMenu">
                         <Border Background="Black" 
                                 Padding="20">
                             <StackPanel>
@@ -29,12 +33,23 @@
                                         <Button Grid.Row="1" Grid.Column="0" Content="Close" Click="CloseAddFriendMenu"></Button>
                                     </Grid>
                                     
-                                    <ItemsControl ItemsSource="{Binding FriendList}" >
+                                    <ItemsControl ItemsSource="{Binding FriendList}" Name="ItemsParent">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <ListBoxItem>
-                                                    <Button Content="{Binding DisplayName}" Click="OpenFriendConfig" Tag="{Binding UserId}"></Button>
-                                                </ListBoxItem>
+                                                <Button Click="OpenFriendConfig" Tag="{Binding UserId}" HorizontalAlignment="Stretch">
+                                                    <Grid ColumnDefinitions="Auto, *">
+                                                        <Svg Path="{Binding Status, StringFormat=/Assets/FriendAssets/OnlineStatus/{0}.svg}" Width="20" Height="20" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}"></TextBlock>
+                                                    </Grid>
+                                                    <Button.ContextFlyout>
+                                                        <MenuFlyout>
+                                                            <MenuItem Header="Remove Friend" CommandParameter="{Binding UserId}" 
+                                                                      Command="{Binding #ItemsParent.((vm:MainViewModel)DataContext).RemoveFriendCommand}"></MenuItem>
+                                                            <MenuItem Header="Block Friend" CommandParameter="{Binding UserId}" 
+                                                                      Command="{Binding #ItemsParent.((vm:MainViewModel)DataContext).BlockUserCommand}" ></MenuItem>
+                                                        </MenuFlyout>
+                                                    </Button.ContextFlyout>
+                                                </Button>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

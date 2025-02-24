@@ -21,7 +21,8 @@ public partial class BigFriendManagementWindow : Window
 
     private void ManageFriend(object? sender, RoutedEventArgs e)
     {
-        throw new NotImplementedException();
+        //throw new NotImplementedException();
+        Console.WriteLine("Managing friend.");
     }
 
     private void ShowUser(object? sender, RoutedEventArgs e)

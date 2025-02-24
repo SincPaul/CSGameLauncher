@@ -14,16 +14,18 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.2.1"/>
-        <PackageReference Include="Avalonia.Desktop" Version="11.2.1"/>
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.1"/>
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.1"/>
+        <PackageReference Include="Avalonia" Version="11.2.1" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.2.1" />
+        <PackageReference Include="Avalonia.Svg.Skia" Version="11.2.0.2" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.1" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.1" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Include="Avalonia.Diagnostics" Version="11.2.1">
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+        <PackageReference Include="Svg.Skia" Version="2.0.0.4" />
     </ItemGroup>
 
     <ItemGroup>
@@ -47,5 +49,24 @@
         <DependentUpon>RegisterWindow.axaml</DependentUpon>
         <SubType>Code</SubType>
       </Compile>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Assets\FriendAssets\OnlineStatus\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Assets\FriendAssets\OnlineStatus\away.svg" />
+      <AvaloniaResource Include="Assets\FriendAssets\OnlineStatus\away.svg" />
+        <None Remove="Assets\FriendAssets\OnlineStatus\Away.svg" />
+        <AvaloniaResource Include="Assets\FriendAssets\OnlineStatus\away.svg" />
+        <None Remove="Assets\FriendAssets\OnlineStatus\Offline.svg" />
+        <AvaloniaResource Include="Assets\FriendAssets\OnlineStatus\offline.svg" />
+        <None Remove="Assets\FriendAssets\OnlineStatus\Unknown.svg" />
+        <AvaloniaResource Include="Assets\FriendAssets\OnlineStatus\unknown.svg" />
+        <None Remove="Assets\FriendAssets\friends.svg" />
+        <AvaloniaResource Include="Assets\FriendAssets\friends.svg" />
+        <None Remove="Assets\General\options.svg" />
+        <AvaloniaResource Include="Assets\General\options.svg" />
     </ItemGroup>
 </Project>

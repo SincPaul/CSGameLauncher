@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using GameLauncher.ViewModels;
 using GameLauncher.Windows;
 
@@ -58,12 +57,13 @@ public class FriendUtils
             var json = response.Content.ReadAsStringAsync().Result;
             json = Uri.UnescapeDataString(json);
             Console.WriteLine(json);
-            var friends = JsonSerializer.Deserialize<List<Friend>>(json);
-
-            return new ObservableCollection<Friend>(friends ?? []);
+            var friends = JsonSerializer.Deserialize<List<Friend>>(json) ?? [];
+            Console.WriteLine("Friends COunt: " + friends.Count);
+            return new ObservableCollection<Friend>(friends);
         }
         catch (Exception ex)
         {
+            Console.WriteLine("Failed to get friends: " + ex.Message);
             return [];
         }
     }
@@ -79,8 +79,9 @@ public class FriendUtils
             var response = client.GetAsync(friendRequestUrl).Result;
             var json = response.Content.ReadAsStringAsync().Result;
             json = Uri.UnescapeDataString(json);
-            var friendRequests = JsonSerializer.Deserialize<List<ReceivedFriendRequest>>(json);
-            return new ObservableCollection<ReceivedFriendRequest>(friendRequests ?? []);
+            var friendRequests = JsonSerializer.Deserialize<List<ReceivedFriendRequest>>(json) ?? [];
+            Console.WriteLine("Received Friend requests Count: " + friendRequests.Count);
+            return new ObservableCollection<ReceivedFriendRequest>(friendRequests);
         } 
         catch (Exception ex) 
         {
@@ -94,19 +95,19 @@ public class FriendUtils
         try
         {
             const string friendRequestUrl = $"{ServerCommunication.ServerAddress}/friends/requests/sent";
-            Console.WriteLine("Getting received friend requests...");
+            Console.WriteLine("Getting sent friend requests...");
             var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Cookie", UserUtils.UserCookie);
             var response = client.GetAsync(friendRequestUrl).Result;
             var json = response.Content.ReadAsStringAsync().Result;
             json = Uri.UnescapeDataString(json);
-            var friendRequests = JsonSerializer.Deserialize<List<SentFriendRequest>>(json);
-            Console.WriteLine("Friend requests: " + friendRequests);
-            return new ObservableCollection<SentFriendRequest>(friendRequests ?? []);
+            var friendRequests = JsonSerializer.Deserialize<List<SentFriendRequest>>(json) ?? [];
+            Console.WriteLine("Sent Friend requests count: " + friendRequests.Count);
+            return new ObservableCollection<SentFriendRequest>(friendRequests);
         } 
         catch (Exception ex) 
         {
-            Console.WriteLine("Failed to get received friend requests: " + ex.Message);
+            Console.WriteLine("Failed to get sent friend requests: " + ex.Message);
             return [];
         }
     }
@@ -122,8 +123,9 @@ public class FriendUtils
             var response = client.GetAsync(friendRequestUrl).Result;
             var json = response.Content.ReadAsStringAsync().Result;
             json = Uri.UnescapeDataString(json);
-            var blockedUsers = JsonSerializer.Deserialize<List<User>>(json);
-            return new ObservableCollection<User>(blockedUsers ?? []);
+            var blockedUsers = JsonSerializer.Deserialize<List<User>>(json) ?? [];
+            Console.WriteLine("Blocked users count: " + blockedUsers.Count);
+            return new ObservableCollection<User>(blockedUsers);
         }
         catch (Exception ex)
         {
@@ -134,6 +136,7 @@ public class FriendUtils
     
     public static async Task LoadFriendStuff(MainViewModel viewmodel) {
         var friends = GetFriends();
+        Console.WriteLine("Friends: " + friends);
         viewmodel.FriendList.Clear();
         foreach (var friend in friends) {
             viewmodel.FriendList.Add(friend);
@@ -158,6 +161,7 @@ public class FriendUtils
         foreach (var blockedUser in blockedUsers) {
             viewmodel.BlockedUsers.Add(blockedUser);
         }
+        viewmodel.UpdateFriendViews();
     }
     
     public static async Task SentFriendRequestToServer(string username, MainViewModel viewModel)
@@ -192,7 +196,7 @@ public class FriendUtils
         
         Console.WriteLine("Failed to send friend request.");
         var errorMessage = RegisterWindow.HtmlStripper.StripHtml(await response.Content.ReadAsStringAsync());
-        ToastNotification.Show(errorMessage, 5);
+        ToastNotification.Show(errorMessage);
         
     }
 
@@ -223,8 +227,8 @@ public class FriendUtils
             if (friend != null)
             {
                 viewModel.FriendList.Add(friend);
-                Console.WriteLine("Friend request sent.");
-                ToastNotification.Show("Friend request sent.");
+                Console.WriteLine("Accepted Friend Request.");
+                //ToastNotification.Show("ACcepted Friend Request.");
             } else {
                 Console.WriteLine("Failed to accept friend request.");
                 var errorMessage = RegisterWindow.HtmlStripper.StripHtml(await response.Content.ReadAsStringAsync());
@@ -303,7 +307,7 @@ public class FriendUtils
             Console.WriteLine(responseString);
             if (!response.IsSuccessStatusCode)
             {
-                var trimmedResponse = Windows.RegisterWindow.HtmlStripper.StripHtml(responseString);
+                var trimmedResponse = RegisterWindow.HtmlStripper.StripHtml(responseString);
                 ToastNotification.Show("Failed to decline friend request: " + trimmedResponse);
                 Console.WriteLine("Failed to decline friend request: " + responseString);
             }
@@ -324,7 +328,7 @@ public class FriendUtils
     {
         try
         {
-            const string friendRequestUrl = $"{ServerCommunication.ServerAddress}/friends/block";
+            const string friendRequestUrl = $"{ServerCommunication.ServerAddress}/friends/request/block";
             var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Cookie", UserUtils.UserCookie);
             var content = new StringContent(JsonSerializer.Serialize(new { userId }), System.Text.Encoding.UTF8,
@@ -335,27 +339,286 @@ public class FriendUtils
             if (!response.IsSuccessStatusCode)
             {
                 var trimmedResponse = RegisterWindow.HtmlStripper.StripHtml(responseString);
-                ToastNotification.Show("Failed to block user: " + trimmedResponse);
-                Console.WriteLine("Failed to block user: " + responseString);
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    ToastNotification.Show("Failed to block user: " + trimmedResponse);
+                    Console.WriteLine("Failed to block user: " + responseString);
+                });
             }
             else
             {
-                var json = response.Content.ReadAsStringAsync().Result;
-                json = Uri.UnescapeDataString(json);
-                var user = JsonSerializer.Deserialize<User>(json);
-                if (user == null)
+                try
                 {
-                    ToastNotification.Show("Failed Updating View, restart please.");
-                    return;
+                    var json = response.Content.ReadAsStringAsync().Result;
+                    json = Uri.UnescapeDataString(json);
+                    var user = JsonSerializer.Deserialize<User>(json);
+                    try
+                    {
+                        RemoveReceivedFriendRequest(userId, viewModel);
+                    } catch
+                    {
+                        //ignored
+                    }
+                    try
+                    {
+                        viewModel.SentFriendRequests.Remove(viewModel.SentFriendRequests.First(request => request.UserId == userId));
+                    }
+                    catch
+                    {
+                        //ignored
+                    }
+                    
+                    try
+                    {
+                        viewModel.FriendList.Remove(viewModel.FriendList.First(friend => friend.UserId == userId));
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+
+                    if (user == null)
+                    {
+                        ToastNotification.Show("Failed Updating View, restart please.");
+                        Console.WriteLine("Failed Updating View, restart please.");
+                        return;
+                    }
+                    viewModel.BlockedUsers.Add(user);
+                } 
+                catch (Exception ex)
+                {
+                    ToastNotification.Show("Failed Updating View, restart please. " + ex.Message);
+                    Console.WriteLine("Failed Updating View, restart please. " + ex.Message);
                 }
-                RemoveReceivedFriendRequest(userId, viewModel);
-                viewModel.BlockedUsers.Add(user);
             }
         } 
         catch (Exception ex) 
         {
             ToastNotification.Show("Failed to block user: " + ex.Message);
             Console.WriteLine("Failed to block user: " + ex.Message);
+        }
+    }
+
+    public static async Task RemoveFriend(string userId, MainViewModel viewModel)
+    {
+        try
+        {
+            Console.WriteLine($"RemoveFriend ViewModel: {viewModel.GetHashCode()}");
+            const string friendRequestUrl = $"{ServerCommunication.ServerAddress}/friends/request/remove";
+            Console.WriteLine(friendRequestUrl);
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Cookie", UserUtils.UserCookie);
+            var content = new StringContent(JsonSerializer.Serialize(new { userId }), System.Text.Encoding.UTF8,
+                "application/json");
+            var response = await client.PostAsync(friendRequestUrl, content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMessage = RegisterWindow.HtmlStripper.StripHtml(await response.Content.ReadAsStringAsync());
+                ToastNotification.Show("Failed to remove friend.\n" + errorMessage);
+                return;
+            }
+
+            viewModel.FriendList.Remove(viewModel.FriendList.First(user => user.UserId == userId));
+        }
+        catch (Exception ex)
+        {
+            ToastNotification.Show("Failed to remove friend: " + ex.Message);
+            Console.WriteLine("Failed to remove friend: " + ex.Message);
+        }
+    }
+
+    public static async Task UnblockUser(string userId, MainViewModel viewModel)
+    {   
+        try
+        {
+            Console.WriteLine($"Unblock ViewModel: {viewModel.GetHashCode()}");
+            const string friendRequestUrl = $"{ServerCommunication.ServerAddress}/friends/request/unblock";
+            Console.WriteLine(friendRequestUrl);
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Cookie", UserUtils.UserCookie);
+            var content = new StringContent(JsonSerializer.Serialize(new { userId }), System.Text.Encoding.UTF8,
+                "application/json");
+            var response = await client.PostAsync(friendRequestUrl, content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorMessage = RegisterWindow.HtmlStripper.StripHtml(await response.Content.ReadAsStringAsync());
+                ToastNotification.Show("Failed to unblock user.\n" + errorMessage);
+                return;
+            }
+
+            viewModel.BlockedUsers.Remove(viewModel.BlockedUsers.First(user => user.UserId == userId));
+        }
+        catch (Exception ex)
+        {
+            ToastNotification.Show("Failed to unblock user: " + ex.Message);
+            Console.WriteLine("Failed to unblock user " + ex.Message);
+        }
+    }
+
+    public static void HandleFriendWsMessage(string message, MainViewModel viewModel)
+    {
+        var jsonDocument = JsonDocument.Parse(message);
+        var type = jsonDocument.RootElement.GetProperty("type").GetString();
+    
+        var handlers = new Dictionary<string, Action<JsonDocument, MainViewModel>>
+        {
+            { "friend_status", HandleFriendStatusMessage },
+            { "friend_request_accepted", HandleAcceptedFriendRequest },
+            { "friend_request_declined", HandleDeclinedFriendRequest },
+            { "friend_request_canceled", HandleCanceledFriendRequest },
+            { "friend_request_sent", HandleReceivedFriendRequest },
+            { "user_blocked", HandleBlockedUser },
+            { "friend_removed", HandleFriendRemoved }
+
+        };
+    
+        if (handlers.TryGetValue(type, out var handler))
+        {
+            handler(jsonDocument, viewModel);
+            viewModel.UpdateFriendViews();
+        }
+        else
+        {
+            Console.WriteLine("Unknown message type: " + type);
+        }
+    }
+    
+
+    private static void HandleFriendStatusMessage(JsonDocument jsonDocument, MainViewModel viewModel)
+    {
+        var uuid = jsonDocument.RootElement.GetProperty("uuid").GetString();
+        var status = jsonDocument.RootElement.GetProperty("status").GetString();
+        Console.WriteLine($"Friend {uuid} is now {status}");
+        var friend = viewModel.FriendList.FirstOrDefault(friend => friend.UserId == uuid);
+        if (friend == null || status == null) return;
+        friend.Status = status;
+        viewModel.ChangeFriendStatus(friend);
+    }
+    
+    private static async void HandleAcceptedFriendRequest(JsonDocument jsonDocument, MainViewModel viewModel)
+    {
+        try
+        {
+            var user = jsonDocument.RootElement.GetProperty("user");
+            var friend = JsonSerializer.Deserialize<Friend>(user.GetRawText());
+            if (friend == null) return;
+            viewModel.FriendList.Add(friend);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ToastNotification.Show($"{friend.DisplayName} accepted your friend request.");
+                return Task.CompletedTask;
+            });
+            viewModel.SentFriendRequests.Remove(viewModel.SentFriendRequests.First(request => request.UserId == friend.UserId));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Failed to handle accepted friend request: " + ex.Message);
+        }
+    }
+
+    private static void HandleDeclinedFriendRequest(JsonDocument jsonDocument, MainViewModel viewModel)
+    {
+        try
+        {
+            var userId = jsonDocument.RootElement.GetProperty("userId").GetString();
+            viewModel.SentFriendRequests.Remove(viewModel.SentFriendRequests.First(request => request.UserId == userId));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Failed to handle declined friend request: " + ex.Message);
+        }
+    }
+
+    private static void HandleCanceledFriendRequest(JsonDocument jsonDocument, MainViewModel viewModel)
+    {
+        try
+        {
+            var userId = jsonDocument.RootElement.GetProperty("userId").GetString();
+            viewModel.ReceivedFriendRequests.Remove(viewModel.ReceivedFriendRequests.First(request => request.UserId == userId));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Failed to handle canceled friend request: " + ex.Message);
+        }
+    }
+
+    private static async void HandleReceivedFriendRequest(JsonDocument jsonDocument, MainViewModel viewModel)
+    {
+        try
+        {
+            var user = jsonDocument.RootElement.GetProperty("user");
+            var friendRequest = JsonSerializer.Deserialize<ReceivedFriendRequest>(user.GetRawText());
+            if (friendRequest == null)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    ToastNotification.Show("Received friend request, but failed to display, restart please:");
+                });
+                Console.WriteLine("Failed to handle received friend request");
+                return;
+            }
+            viewModel.ReceivedFriendRequests.Add(friendRequest);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ToastNotification.Show($"{friendRequest.DisplayName} sent you a friend request.");
+            });
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ToastNotification.Show("Received friend request, but failed to display, restart please: " +
+                                       ex.Message);
+            });
+            Console.WriteLine("Failed to handle received friend request: " + ex.Message);
+        }
+    }
+    
+    private static async void HandleBlockedUser(JsonDocument jsonDocument, MainViewModel viewModel)
+    {
+        try
+        {
+            var userId = jsonDocument.RootElement.GetProperty("userId").GetString();
+            if (userId == null) return;
+            var user = viewModel.FriendList.FirstOrDefault(friend => friend.UserId == userId);
+            if (user == null) return;
+            viewModel.FriendList.Remove(user);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ToastNotification.Show($"{user.DisplayName} blocked you.");
+            });
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ToastNotification.Show("Blocked user, but failed to display, restart please: " + ex.Message);
+            });
+            Console.WriteLine("Failed to handle blocked user: " + ex.Message);
+        }
+    }
+    
+    private static async void HandleFriendRemoved(JsonDocument jsonDocument, MainViewModel viewModel)
+    {
+        try
+        {
+            var userId = jsonDocument.RootElement.GetProperty("userId").GetString();
+            if (userId == null) return;
+            var user = viewModel.FriendList.FirstOrDefault(friend => friend.UserId == userId);
+            if (user == null) return;
+            viewModel.FriendList.Remove(user);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ToastNotification.Show($"{user.DisplayName} removed you as a friend.");
+            });
+        }
+        catch (Exception ex)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ToastNotification.Show("Friend removed, but failed to display, restart please: " + ex.Message);
+            });
+            Console.WriteLine("Failed to handle friend removed: " + ex.Message);
         }
     }
 }

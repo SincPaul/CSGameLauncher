@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -10,12 +11,14 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using GameLauncher.ViewModels;
 
 namespace GameLauncher.Functions
 {
     public static class ServerCommunication
     {
+        private static ObservableCollection<GameStats> Games { get; } = [];
         public const string ServerAddress = "http://10.31.1.41:80";
         public const string WebsocketAddress = "ws://10.31.1.41:80";
         private static ClientWebSocket? _serverStatusWebSocket;
@@ -26,24 +29,82 @@ namespace GameLauncher.Functions
 
         private static readonly Dictionary<string, Func<MainViewModel, string, Task>> WebsocketHandlers = new()
         {
-            { $"{WebsocketAddress}/Server/OnlineStatus", async (viewModel, address) => await MonitorServerStatus(viewModel, address) },
+            { $"{WebsocketAddress}/Server/OnlineStatus", async (viewModel, address) => await MonitorServerStatus(viewModel, address) }
+            //{ $"{WebsocketAddress}/friends", async (viewModel, address) => await MonitorFriends(viewModel, address) }
         };
+        
+        
 
         private static async Task MonitorServerStatus(MainViewModel viewModel, string address)
         {
-            while (true)
+            var serverClient = new WebSocketClient();
+            serverClient.OnMessage += message =>
             {
-                if (!viewModel.IsServerConnected)
+                if (message == "pong") return;
+                Console.WriteLine("Received Server message: " + message);
+            };
+            serverClient.OnConnect += async () =>
+            {
+                Console.WriteLine("Connected to server.");
+                await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    await TryConnect(viewModel, address);
-                }
-                else
-                {
-                    await SendPingAndCheckPong(viewModel);
-                }
+                    viewModel.EnableServerConnection();
+                    await UserUtils.CreateUser(viewModel);
+                    await GameUtils.LoadGamesAsync(viewModel, Games);
+                    viewModel.ShowGames(Games);
+                    viewModel.ChangeLoadingStatus(false);
+                    Console.WriteLine("Finished loading Games");
+                
+                    if (Games.Count > 0)
+                    {
+                        viewModel.SwapMainGameCommand.Execute(Games[0]);
+                    }
+                });
+            };
+            var address1 = address;
+            serverClient.OnDisconnect += async () =>
+            {
+                Console.WriteLine("Disconnected from server.");
+                viewModel.DisableServerConnection();
+                UserUtils.RemoveUser(viewModel);
+                await Task.Delay(ReconnectDelay);
+                await serverClient.ReconnectAsync(address1);
+            };
+            await serverClient.ConnectAsync(address1);
+            
+            address = $"{WebsocketAddress}/friends";
 
-                await Task.Delay(PingInterval);
-            }
+            var friendClient = new WebSocketClient();
+            friendClient.Option.SetRequestHeader("Cookie", UserUtils.UserCookie);
+            friendClient.OnMessage += message =>
+            {
+                if (message == "pong") return;
+                Console.WriteLine("Received Friend message: " + message);
+                FriendUtils.HandleFriendWsMessage(message, viewModel);
+            };
+            friendClient.OnConnect += async () =>
+            {
+                Console.WriteLine("Connected to friends.");
+                await FriendUtils.LoadFriendStuff(viewModel);
+
+            };
+            friendClient.OnDisconnect += async () =>
+            {
+                Console.WriteLine("Disconnected from friends.");
+                await Task.Delay(ReconnectDelay);
+                await friendClient.ReconnectAsync(address);
+            };
+            await friendClient.ConnectAsync(address);
+            
+
+            //if (!viewModel.IsServerConnected)
+            //{
+            //    await TryConnect(viewModel, address);
+            //}
+            //else
+            //{
+            //    await SendPingAndCheckPong(viewModel);
+            //}
         }
 
         private static async Task TryConnect(MainViewModel viewModel, string address)
@@ -63,18 +124,52 @@ namespace GameLauncher.Functions
 
                 _receivedPong = true; 
                 _ = ListenForMessages(viewModel); 
+                
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    await UserUtils.CreateUser(viewModel);
+                    await GameUtils.LoadGamesAsync(viewModel, Games);
+                    viewModel.ShowGames(Games);
+                    viewModel.ChangeLoadingStatus(false);
+                    Console.WriteLine("Finished loading Games");
+                
+                    if (Games.Count > 0)
+                    {
+                        viewModel.SwapMainGameCommand.Execute(Games[0]);
+                    }
+                });
+
             }
             catch (Exception e)
             {
-                Console.WriteLine("Connection error: " + e.Message);
                 viewModel.DisableServerConnection();
-                await Task.Delay(ReconnectDelay);
+                UserUtils.RemoveUser(viewModel);
             }
             finally
             {
                 _isConnecting = false;
             }
         }
+        
+        //private static async Task MonitorFriends(MainViewModel viewModel, string address)
+        //{
+        //    if (UserUtils.UserCookie == string.Empty)
+        //    {
+        //        Console.WriteLine("No user cookie found.");
+        //        viewModel.DisableFriendsConnection();
+        //        return;
+        //    }
+        //    
+        //    if (!viewModel.IsFriendsConnected)
+        //    {
+        //        await TryConnectFriends(viewModel, address);
+        //    }
+        //    else
+        //    {
+        //        await SendPingAndCheckPongFriends(viewModel);
+        //    }
+        //}
+        
 
         private static async Task SendPingAndCheckPong(MainViewModel viewModel)
         {
@@ -97,7 +192,7 @@ namespace GameLauncher.Functions
                 await _serverStatusWebSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
                 //Console.WriteLine("Sent ping to WebSocket server.");
 
-                _receivedPong = false; // Reset until we get a response
+                _receivedPong = false; 
             }
             catch (Exception ex)
             {
@@ -134,6 +229,8 @@ namespace GameLauncher.Functions
                 viewModel.DisableServerConnection();
             }
         }
+        
+        
 
 
         public class GameList
@@ -313,7 +410,12 @@ namespace GameLauncher.Functions
                 }
 
                 var gameStats = await GetGameStats(gameId);
-                if (gameStats == null) throw new ArgumentNullException(nameof(gameStats));
+                if (gameStats == null)
+                {
+                    //throw new ArgumentNullException(nameof(gameStats));
+                    Console.WriteLine("Game stats are null.");
+                    viewModel.UpdateDownloadStatus(false, false, false, true, "", game);
+                }
 
                 var contentDisposition = response.Content.Headers.ContentDisposition;
                 var fileName = contentDisposition?.FileName?.Trim('"') ?? "game.exe";
@@ -368,9 +470,144 @@ namespace GameLauncher.Functions
         
         public static async Task HandleWebsockets(MainViewModel viewModel)
         {
+
             foreach (var (address, handlerFunc) in WebsocketHandlers)
             {
                 await handlerFunc(viewModel, address);
+            }
+
+            
+        }
+        
+        
+    }
+
+    public class WebSocketClient
+    {
+        private ClientWebSocket _socket;
+        public ClientWebSocketOptions Option => _socket.Options;
+        private readonly TimeSpan _pingInterval = TimeSpan.FromSeconds(5);
+        private Task _pingTask;
+        public event Action<string> OnMessage;
+        public event Action OnDisconnect;
+        public event Action OnConnect;
+        public event Action OnClose;
+
+        public WebSocketClient()
+        {
+            try
+            {
+                _socket = new ClientWebSocket();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to create websocket: " + ex.Message);
+            }
+        }
+
+        public async Task ConnectAsync(string address)
+        {
+            try
+            {
+                var uri = new Uri(address);
+                await _socket.ConnectAsync(uri, CancellationToken.None);
+                _ = ListenAsync();
+                _pingTask = StartPingLoopAsync();
+                OnConnect?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to connect to websocket: " + ex.Message);
+                OnDisconnect?.Invoke();
+            }
+        }
+        
+        private async Task StartPingLoopAsync()
+        {
+            while (_socket.State == WebSocketState.Open)
+            {
+                await Task.Delay(_pingInterval);
+                await SendAsync("ping");
+            }
+        }
+        
+        public async Task SendAsync(string message)
+        {
+            try
+            {
+                var buffer = Encoding.UTF8.GetBytes(message);
+                await _socket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true,
+                    CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error sending message: " + ex.Message);
+            }
+        }
+        
+        private async Task ListenAsync()
+        {
+            var buffer = new byte[1024];
+            try
+            {
+                while (_socket.State == WebSocketState.Open)
+                {
+                    var result = await _socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    OnMessage?.Invoke(message);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error receiving message: " + ex.Message);
+                OnDisconnect?.Invoke();
+                // reconnect
+            }
+        }
+
+        public async Task DisconnectAsync()
+        {
+            try 
+            {
+                await _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                OnDisconnect?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error disconnecting from websocket: " + ex.Message);
+            }
+        }
+
+        public async Task ReconnectAsync(string address)
+        {
+            try
+            {
+                if (_socket != null && _socket.State != WebSocketState.Closed)
+                {
+                    await _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Reconnecting", CancellationToken.None);
+                    _socket.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error closing websocket: " + ex.Message);
+            }
+
+            _socket = new ClientWebSocket();
+            _socket.Options.SetRequestHeader("Cookie", UserUtils.UserCookie);
+    
+            try
+            {
+                var uri = new Uri(address);
+                await _socket.ConnectAsync(uri, CancellationToken.None);
+                _ = ListenAsync();
+                _pingTask = StartPingLoopAsync();
+                OnConnect?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Failed to connect: " + ex.Message);
+                OnDisconnect?.Invoke();
             }
         }
     }

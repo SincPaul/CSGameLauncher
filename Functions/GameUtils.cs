@@ -1,22 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using GameLauncher.ViewModels;
+using GameLauncher.Windows;
 
 namespace GameLauncher.Functions
 {
     public class GameUtils
-    { public static string GetLocalGameVersion(int gameId)
+    {
+        public static string GetLocalGameVersion(int gameId)
         {
             var gamePath = Path.Combine(Program.BasePath, "Games", gameId.ToString());
             var metadataPath = Path.Combine(gamePath, "metadata.json");
             Console.WriteLine("Game Path: " + gamePath);
             if (!File.Exists(metadataPath))
             {
-                return string.Empty; 
+                return string.Empty;
             }
 
             try
@@ -54,28 +57,33 @@ namespace GameLauncher.Functions
                 return string.Empty;
             }
         }
-        
+
         public static void CreateGameMetadata(string filePath, ServerCommunication.GameStats game, string executable)
         {
             var metadataFile = Path.Combine(filePath, "metadata.json");
             var metadataJson = JsonSerializer.Serialize(game);
             File.WriteAllText(metadataFile, metadataJson);
-            
+
             var gamePath = Path.Combine(Program.BasePath, "Games");
             if (!Path.Exists(gamePath))
             {
                 Directory.CreateDirectory(gamePath);
             }
+
             var localGamesFile = Path.Combine(gamePath, "localgames.json");
             if (!File.Exists(localGamesFile))
             {
                 File.WriteAllText(localGamesFile, "[]");
             }
-            
+
             var localGamesJson = File.ReadAllText(localGamesFile);
             var localGames = JsonSerializer.Deserialize<List<GameId>>(localGamesJson) ?? [];
-            if (localGames == null) throw new ArgumentNullException(nameof(localGames));
-            var gameId = new GameId {Id = game.Id};
+            if (localGames == null)
+            {
+                //throw new ArgumentNullException(nameof(localGames));
+                return;
+            }
+            var gameId = new GameId { Id = game.Id };
             localGames.Add(gameId);
             var newLocalGamesJson = JsonSerializer.Serialize(localGames);
             File.WriteAllText(localGamesFile, newLocalGamesJson);
@@ -95,14 +103,15 @@ namespace GameLauncher.Functions
                 Console.WriteLine("Executable not found.");
                 return string.Empty;
             }
+
             var executablePath = Path.Combine(gamePath, executable);
             Console.WriteLine(executablePath);
             if (File.Exists(executablePath)) return executablePath;
-            
+
             Console.WriteLine("Executable not found.");
             return string.Empty;
         }
-        
+
         public static void LaunchGame(ServerCommunication.GameStats game, MainViewModel viewModel)
         {
             var gamePath = Path.Combine(Program.BasePath, "Games", game.Id.ToString());
@@ -140,7 +149,7 @@ namespace GameLauncher.Functions
             }
         }
 
-        public async static Task<List<GameId>> GetLocalGames()
+        public static async Task<List<GameId>> GetLocalGames()
         {
             var games = new List<GameId>();
             var gamesPath = Path.Combine(Program.BasePath, "Games");
@@ -148,16 +157,17 @@ namespace GameLauncher.Functions
             {
                 return games;
             }
+
             var localGames = Path.Combine(gamesPath, "localgames.json");
             if (!File.Exists(localGames))
             {
                 return games;
             }
-            
-            var localGamesJson = File.ReadAllText(localGames);
+
+            var localGamesJson = await File.ReadAllTextAsync(localGames);
             var localGamesList = JsonSerializer.Deserialize<List<GameId>>(localGamesJson);
 
-            return localGamesList;
+            return localGamesList ?? [];
         }
 
         public static ServerCommunication.GameStats GetLocalGameStats(int gameId)
@@ -180,9 +190,42 @@ namespace GameLauncher.Functions
                 Console.WriteLine($"Error reading game metadata for {gameId}: {ex.Message}");
                 return null;
             }
-            
+
         }
-    }
+
+        public static async Task LoadGamesAsync(MainViewModel viewModel, ObservableCollection<ServerCommunication.GameStats> games)
+        {
+            Console.WriteLine(viewModel);
+            var gamesFromServer = await ServerCommunication.CheckServerGames(viewModel);
+            var localGames = await GetLocalGames();
+            games.Clear();
+            foreach (var localGame in localGames)
+            {
+                var gameStats = GetLocalGameStats(localGame.Id);
+                games.Add(gameStats);
+                Console.WriteLine("Local game added: " + gameStats.Name);
+            }
+
+            foreach (var game in gamesFromServer)
+            {
+                var isLocalGame = false;
+                foreach (var localGame in localGames)
+                {
+                    if (game.Id != localGame.Id) continue;
+                    isLocalGame = true;
+                    break;
+                }
+
+                if (isLocalGame) continue;
+                games.Add(game);
+                Console.WriteLine(game);
+                //ToastNotification.Show(game.Name, -1);
+                Console.WriteLine("Game added: " + game.Name);
+            }
+
+            Console.WriteLine(games);
+        }
+}
     
     
 

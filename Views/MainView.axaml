@@ -19,10 +19,11 @@
     
     <Grid Background="LightBlue" RowDefinitions="Auto,*">
         <Border Background="Red" Height="80" VerticalAlignment="Top" Padding="10" Margin="20" Grid.Row="0">
-            <Grid ColumnDefinitions="*, Auto, Auto">
+            <Grid ColumnDefinitions="Auto, *, Auto, Auto">
                 <TextBlock Text="Game Launcher des Coolen Typs (Paul)" FontSize="50"/>
-                <views:FriendOverlayView Grid.Column="1"/>
-                <views:AccountManagementView Grid.Column="2"/>
+                <TextBlock Grid.Column="1" Text="Cant connect to Server" IsVisible="{Binding !IsServerConnected}" HorizontalAlignment="Center" FontSize="25"></TextBlock>
+                <views:FriendOverlayView Grid.Column="2"/>
+                <views:AccountManagementView Grid.Column="3"/>
             </Grid>
         </Border>
 

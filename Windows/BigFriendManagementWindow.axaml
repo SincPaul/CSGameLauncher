@@ -14,95 +14,155 @@
         <vm:MainViewModel x:Key="MainViewModel"></vm:MainViewModel>
     </Window.Resources>
     
-    <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-    <TabItem Header="Friends">
-        <TabItem.Content>
-            <ListBox>
-                <ItemsControl ItemsSource="{Binding FriendList}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <ListBoxItem>
-                                <Border Padding="15" Background="Gray" Margin="5">
-                                    <Grid ColumnDefinitions="Auto, *, Auto">
-                                        <TextBlock Text="{Binding Status}" FontSize="20"></TextBlock>
-                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="20"></TextBlock>
-                                        <Button Grid.Column="2" Content="..." Click="ManageFriend" FontSize="20" Tag="{Binding UserId}"></Button>
-                                    </Grid> 
-                                </Border>
-                            </ListBoxItem>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ListBox>
-        </TabItem.Content>
-    </TabItem>
-    <TabItem Header="Friend Requests">
-        <TabItem.Content>
-            <Grid RowDefinitions="Auto, *" ColumnDefinitions="Auto, *">
-                <TextBox Text="{Binding EnteredFriendUsername, UpdateSourceTrigger=PropertyChanged}" Name="AddFriendInput" Watermark="Input User Username"></TextBox>
-                <Button Grid.Row="0" Grid.Column="1" Content="Add" Command="{Binding AddFriendCommand}"></Button>
-                <Border Grid.Row="1" Grid.Column="0" Margin="15">
-                    <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                        <TabItem Header="Received Friend Requests">
-                            <TabItem.Content>
-                                <ListBox>
-                                    <ItemsControl ItemsSource="{Binding ReceivedFriendRequests}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Button Margin="5" HorizontalAlignment="Stretch" Click="ShowUser">
-                                                    <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
-                                                        <TextBlock Text="{Binding UserName}" Margin="0 0 10 0"></TextBlock>
-                                                        <TextBlock Grid.Column="1" 
-                                                                   Text="{Binding TimeSentTimestamp, Converter={StaticResource RelativeTimeConverter}}"
-                                                                   FontSize="15"
-                                                                   Foreground="Gray"></TextBlock>
-                                                        <Button Grid.Column="2" Content="Accept"
-                                                                Command="{Binding Source={StaticResource MainViewModel}, Path=AcceptFriendRequestCommand}"
-                                                                CommandParameter="{Binding UserId}" />
-                                                        <Button Grid.Column="3" Content="Decline" 
-                                                                Command="{Binding Source={StaticResource MainViewModel}, 
-                                                                Path=DeclineFriendRequestCommand}" 
-                                                                CommandParameter="{Binding UserId}"></Button>
-                                                        <Button Grid.Column="4" Content="Block" 
-                                                                Command="{Binding Source={StaticResource MainViewModel}, 
-                                                                Path=BlockUserCommand}" 
-                                                                CommandParameter="{Binding UserId}"></Button>
-                                                    </Grid>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ListBox>
-                            </TabItem.Content>
-                        </TabItem>
-                        <TabItem Header="Sent Friend Requests">
-                            <TabItem.Content>
-                                <ListBox>
-                                    <ItemsControl ItemsSource="{Binding SentFriendRequests}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Button Margin="5" HorizontalAlignment="Stretch" Click="ShowUser">
-                                                    <Grid ColumnDefinitions="*, Auto">
-                                                        <TextBlock Text="{Binding UserName}"></TextBlock>
-                                                        <Button Grid.Column="1" Content="Cancel" 
-                                                                Command="{Binding Source={StaticResource MainViewModel}, Path=CancelFriendRequestCommand}" 
-                                                                CommandParameter="{Binding UserId}"></Button>
-                                                    </Grid>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </ListBox>
-                            </TabItem.Content>
-                        </TabItem>
-                    </TabControl>
-                </Border>
-            </Grid>
-        </TabItem.Content>
-    </TabItem>
-    <TabItem Header="Blocked Users">
-        <!-- Content for Blocked Users -->
-    </TabItem>
-</TabControl>
+    <Grid>
+        <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsVisible="{Binding IsServerConnectedAndUserLoggedIn}">
+            <TabItem Header="Friends">
+                <TabItem.Content>
+                    <ListBox>
+                        <ItemsControl ItemsSource="{Binding FriendList}" Name="FriendListParent">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button HorizontalAlignment="Stretch" Click="ShowUser">
+                                        <Border Padding="15" Background="Gray" Margin="5">
+                                            <Grid ColumnDefinitions="Auto, *, Auto">
+                                                <Svg Path="{Binding Status, StringFormat=/Assets/FriendAssets/OnlineStatus/{0}.svg}" Width="20" Height="20" />
+                                                <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontSize="20"></TextBlock>
+                                                <Button Grid.Column="2" Content="..." Click="ManageFriend" FontSize="20" Tag="{Binding UserId}"></Button>
+                                            </Grid> 
+                                        </Border>
+                                        <Button.ContextFlyout>
+                                            <MenuFlyout>
+                                                <MenuItem Header="Remove Friend" CommandParameter="{Binding UserId}" 
+                                                          Command="{Binding #FriendListParent.((vm:MainViewModel)DataContext).RemoveFriendCommand}"></MenuItem>
+                                                <MenuItem Header="Block Friend" CommandParameter="{Binding UserId}" 
+                                                          Command="{Binding #FriendListParent.((vm:MainViewModel)DataContext).BlockUserCommand}" ></MenuItem>
+                                            </MenuFlyout>
+                                        </Button.ContextFlyout>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ListBox>
+                </TabItem.Content>
+            </TabItem>
+            <TabItem Header="Friend Requests">
+                <TabItem.Content>
+                    <Grid RowDefinitions="Auto, *" ColumnDefinitions="Auto, *">
+                        <TextBox Text="{Binding EnteredFriendUsername, UpdateSourceTrigger=PropertyChanged}" Name="AddFriendInput" Watermark="Input User Username"></TextBox>
+                        <Button Grid.Row="0" Grid.Column="1" Content="Add" Command="{Binding AddFriendCommand}"></Button>
+                        <Border Grid.Row="1" Grid.Column="0" Margin="15">
+                            <TabControl HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                <TabItem Header="Received Friend Requests">
+                                    <TabItem.Content>
+                                        <ListBox>
+                                            <ItemsControl ItemsSource="{Binding ReceivedFriendRequests}" Name="ReceivedFriendRequestsParent">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Margin="5" HorizontalAlignment="Stretch" Click="ShowUser">
+                                                            <Grid ColumnDefinitions="Auto, *, Auto, Auto, Auto">
+                                                                <TextBlock Text="{Binding UserName}" Margin="0 0 10 0"></TextBlock>
+                                                                <TextBlock Grid.Column="1" 
+                                                                           Text="{Binding TimeSentTimestamp, Converter={StaticResource RelativeTimeConverter}}"
+                                                                           FontSize="15"
+                                                                           Foreground="Gray"></TextBlock>
+                                                                <Button Grid.Column="2" Content="Accept"
+                                                                        Command="{Binding Source={StaticResource MainViewModel}, Path=AcceptFriendRequestCommand}"
+                                                                        CommandParameter="{Binding UserId}" />
+                                                                <Button Grid.Column="3" Content="Decline" 
+                                                                        Command="{Binding Source={StaticResource MainViewModel}, 
+                                                                        Path=DeclineFriendRequestCommand}" 
+                                                                        CommandParameter="{Binding UserId}"></Button>
+                                                                <Button Grid.Column="4" Content="Block" 
+                                                                        Command="{Binding Source={StaticResource MainViewModel}, 
+                                                                        Path=BlockUserCommand}" 
+                                                                        CommandParameter="{Binding UserId}"></Button>
+                                                            </Grid>
+                                                            <Button.ContextFlyout>
+                                                                <MenuFlyout>
+                                                                    <MenuItem Header="Accept Friend Request" CommandParameter="{Binding UserId}"
+                                                                              Command="{Binding #ReceivedFriendRequestsParent.((vm:MainViewModel)DataContext).AcceptFriendRequestCommand}"></MenuItem>
+                                                                    <MenuItem Header="Decline Friend Request" CommandParameter="{Binding UserId}" 
+                                                                              Command="{Binding #ReceivedFriendRequestsParent.((vm:MainViewModel)DataContext).DeclineFriendRequestCommand}"></MenuItem>
+                                                                    <MenuItem Header="Block User" CommandParameter="{Binding UserId}" 
+                                                                              Command="{Binding #ReceivedFriendRequestsParent.((vm:MainViewModel)DataContext).BlockUserCommand}" ></MenuItem>
+                                                                </MenuFlyout>
+                                                            </Button.ContextFlyout>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ListBox>
+                                    </TabItem.Content>
+                                </TabItem>
+                                <TabItem Header="Sent Friend Requests">
+                                    <TabItem.Content>
+                                        <ListBox>
+                                            <ItemsControl ItemsSource="{Binding SentFriendRequests}" Name="SentFriendRequestsParent">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Margin="5" HorizontalAlignment="Stretch" Click="ShowUser">
+                                                            <Grid ColumnDefinitions="*, Auto">
+                                                                <TextBlock Text="{Binding UserName}"></TextBlock>
+                                                                <Button Grid.Column="1" Content="Cancel" 
+                                                                        Command="{Binding Source={StaticResource MainViewModel}, Path=CancelFriendRequestCommand}" 
+                                                                        CommandParameter="{Binding UserId}"></Button>
+                                                            </Grid>
+                                                            <Button.ContextFlyout>
+                                                                <MenuFlyout>
+                                                                    <MenuItem Header="Cancel Friend Request" CommandParameter="{Binding UserId}"
+                                                                              Command="{Binding #SentFriendRequestsParent.((vm:MainViewModel)DataContext).CancelFriendRequestCommand}"></MenuItem>
+                                                                    <MenuItem Header="Block User" CommandParameter="{Binding UserId}" 
+                                                                              Command="{Binding #SentFriendRequestsParent.((vm:MainViewModel)DataContext).BlockUserCommand}" ></MenuItem>
+                                                                </MenuFlyout>
+                                                            </Button.ContextFlyout>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ListBox>
+                                    </TabItem.Content>
+                                </TabItem>
+                            </TabControl>
+                        </Border>
+                    </Grid>
+                </TabItem.Content>
+            </TabItem>
+            <TabItem Header="Blocked Users">
+                <TabItem.Content>
+                    <ListBox>
+                        <ItemsControl ItemsSource="{Binding BlockedUsers}" Name="BlockedUserParent">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Margin="5" Click="ShowUser" HorizontalAlignment="Stretch">
+                                        <Grid ColumnDefinitions="*, *">
+                                            <TextBlock Text="{Binding DisplayName}"></TextBlock>
+                                            <Button Grid.Column="1" Content="Unblock" 
+                                                    Command="{Binding Source={StaticResource MainViewModel}, Path=UnblockUserCommand}" 
+                                                    CommandParameter="{Binding UserId}"></Button>
+                                        </Grid>
+                                        <Button.ContextFlyout>
+                                            <MenuFlyout>
+                                                <MenuItem Header="Unblock User" CommandParameter="{Binding UserId}" 
+                                                          Command="{Binding #BlockedUserParent.((vm:MainViewModel)DataContext).UnblockUserCommand}">
+                                                </MenuItem>
+                                            </MenuFlyout>
+                                        </Button.ContextFlyout>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ListBox>    
+                </TabItem.Content>
+            </TabItem>
+        </TabControl>
+    
+        <StackPanel IsVisible="{Binding IsServerConnectedAndUserNotLoggedIn}">
+            <TextBlock Text="Log in to view and manage Friends"></TextBlock>
+        </StackPanel>
+        
+        <StackPanel IsVisible="{Binding !IsServerConnected}">
+            <TextBlock Text="Couldnt connect to the Server, please try again later"></TextBlock>
+        </StackPanel>
+    </Grid>
 
 </Window>

@@ -7,10 +7,13 @@
              x:DataType="vm:MainViewModel"
              x:Class="GameLauncher.Views.AccountManagementView">
     <Grid>
-        <Button Content="Account" FontSize="40" Click="OpenAccountMenu"></Button>
+        <Button Click="OpenAccountMenu">
+            <Svg Path="/Assets/General/options.svg" Width="40" Height="40" />
+        </Button>
         <Popup Name="AccountManagementPopup"
                IsOpen="False"
                HorizontalAlignment="Center"
+               IsLightDismissEnabled="True"
                VerticalAlignment="Center">
             <Border Background="Gray" Padding="20">
                 <Grid RowDefinitions="*, *, Auto">

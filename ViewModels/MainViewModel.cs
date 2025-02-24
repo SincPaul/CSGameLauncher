@@ -59,10 +59,9 @@ namespace GameLauncher.ViewModels
         public bool IsAddingFriend { get; set; }
         
         
-        [RelayCommand]
-        private void SwapLoadingStatus()
+        public void ChangeLoadingStatus(bool status)
         {
-            Isloading = !Isloading;
+            Isloading = status;
             OnPropertyChanged(nameof(PlayButtonText));
             OnPropertyChanged(nameof(VisibilityStatus));
             OnPropertyChanged(nameof(SelectedGame));
@@ -104,6 +103,8 @@ namespace GameLauncher.ViewModels
         public void ShowGames(ObservableCollection<ServerCommunication.GameStats> gameList)
         {
             GameList.Clear();
+            OnlineGameList.Clear();
+            OfflineGameList.Clear();
             foreach (var game in gameList)
             {
                 Console.WriteLine(game.Name);
@@ -354,11 +355,61 @@ namespace GameLauncher.ViewModels
             }
         }
 
+        [RelayCommand]
+        private async Task UnblockUser(string userId)
+        {
+            Console.WriteLine("Unblocking user");
+            try
+            {
+                var viewModel = this;
+                await FriendUtils.UnblockUser(userId, viewModel);
+            } 
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to unblock user: " + ex.Message);
+                Console.WriteLine("Failed to unblock user: " + ex.Message);
+            }
+        }
+        
+
+        [RelayCommand]
+        private async Task RemoveFriend(string userId)
+        {
+            Console.WriteLine("Removing friend");
+            try
+            {
+                var viewModel = this;
+                await FriendUtils.RemoveFriend(userId, viewModel);
+            }
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to remove friend: " + ex.Message);
+                Console.WriteLine("Failed to remove friend: " + ex.Message);
+            }
+        }
+
         public void UpdateFriendRequestText()
         {
             var friendRequestAmount = ReceivedFriendRequests.Count;
             FriendRequestsAmountWithText = $"Friend Requests ({friendRequestAmount})";
             OnPropertyChanged(nameof(FriendRequestsAmountWithText));
+        }
+
+        public void ChangeFriendStatus(FriendUtils.Friend friend)
+        {
+            var friendIndex = FriendList.IndexOf(friend);
+            if (friendIndex == -1) return;
+            FriendList[friendIndex] = friend;
+            OnPropertyChanged(nameof(FriendList));
+        }
+
+        public void UpdateFriendViews()
+        {
+            OnPropertyChanged(nameof(FriendList));
+            OnPropertyChanged(nameof(SentFriendRequests));
+            OnPropertyChanged(nameof(ReceivedFriendRequests));
+            OnPropertyChanged(nameof(BlockedUsers));
+            UpdateFriendRequestText(); 
         }
     }
 }

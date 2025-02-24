@@ -11,7 +11,7 @@ namespace GameLauncher.Views
 {
     public partial class MainView : Window
     {
-        private static ObservableCollection<ServerCommunication.GameStats> Games { get; } = [];
+        
 
         public MainView()
         {
@@ -33,22 +33,6 @@ namespace GameLauncher.Views
                 if (DataContext is not MainViewModel viewModel) return;
                 _ = Task.Run(() => ServerCommunication.HandleWebsockets(viewModel));
                 Console.WriteLine(viewModel);
-
-                await LoadGamesAsync(viewModel);
-                await UserUtils.CreateUser(viewModel);
-                await FriendUtils.LoadFriendStuff(viewModel);
-                
-
-
-                SwapLoading();
-                Console.WriteLine("Finished loading Games");
-
-                (DataContext as MainViewModel)?.ShowGames(Games);
-
-                if (Games.Count > 0)
-                {
-                    (DataContext as MainViewModel)?.SwapMainGameCommand.Execute(Games[0]);
-                }
             }
             catch (Exception e)
             {
@@ -56,43 +40,7 @@ namespace GameLauncher.Views
             }
         }
         
-        private async Task LoadGamesAsync(MainViewModel viewModel)
-        {
-            Console.WriteLine(viewModel);
-            var gamesFromServer = await ServerCommunication.CheckServerGames(viewModel);
-            var localGames = await GameUtils.GetLocalGames();
-            Games.Clear();
-            foreach (var localGame in localGames)
-            {
-                var gameStats = GameUtils.GetLocalGameStats(localGame.Id);
-                Games.Add(gameStats);
-                Console.WriteLine("Local game added: " + gameStats.Name);
-            }
-            foreach (var game in gamesFromServer)
-            {
-                var isLocalGame = false;
-                foreach (var localGame in localGames)
-                {
-                    if (game.Id != localGame.Id) continue;
-                    isLocalGame = true;
-                    break;
-                }
-
-                if (isLocalGame) continue;
-                Games.Add(game);
-                Console.WriteLine(game);
-                ToastNotification.Show(game.Name, -1);
-                Console.WriteLine("Game added: " + game.Name);
-            }
-            Console.WriteLine(Games);
-        }
-
-        private void SwapLoading()
-        {
-            Console.WriteLine("Swapping loading status.");
-            
-            (DataContext as MainViewModel)?.SwapLoadingStatusCommand.Execute(null);
-        }
+        
 
         private void ChooseGame(object? sender, RoutedEventArgs e)
         {

@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using GameLauncher.ViewModels;
 
@@ -43,17 +44,18 @@ public class UserUtils
         Console.WriteLine("User created.");
         Console.WriteLine("User: " + mainUser.username);
         viewModel.SetLoggedIn(true);
-        LoadFriends(decryptedCookie);
+        // ConnectToFriendsWs(decryptedCookie, viewModel);
+        // await FriendUtils.LoadFriendStuff(viewModel);
     }
     
-    private static void LoadFriends(string decryptedCookie)
+    private static void ConnectToFriendsWs(string decryptedCookie, MainViewModel viewModel)
     {
         try
         {
             const string friendsWsUrl = $"{ServerCommunication.WebsocketAddress}/friends";
             var webSocket = new ClientWebSocket();
             webSocket.Options.SetRequestHeader("Cookie", decryptedCookie);
-            webSocket.ConnectAsync(new Uri(friendsWsUrl), default).Wait();
+            webSocket.ConnectAsync(new Uri(friendsWsUrl), CancellationToken.None).Wait();
             Console.WriteLine("Connected to friends websocket");
         }
         catch (Exception ex)
@@ -102,5 +104,10 @@ public class UserUtils
         public string reason { get; set; }
         public long banned_until { get; set; }
         public int status { get; set; }
+    }
+
+    public static void RemoveUser(MainViewModel viewModel)
+    {
+        viewModel.SetLoggedIn(false);
     }
 }
