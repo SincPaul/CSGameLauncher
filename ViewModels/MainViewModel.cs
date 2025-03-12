@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,6 +21,8 @@ namespace GameLauncher.ViewModels
         [ObservableProperty]
         private string _loadingtext = "Loading Games...";
 
+        public WebSocketClient friendClient;
+
         public string PlayButtonText { get; set; } = "Loading Games";
 
         public bool VisibilityStatus => Isloading;
@@ -31,11 +34,15 @@ namespace GameLauncher.ViewModels
         public ObservableCollection<ServerCommunication.GameStats> OnlineGameList { get; } = [];
         
         public ObservableCollection<FriendUtils.Friend> FriendList { get; set; } = [];
+
+        public ObservableCollection<FriendUtils.Friend> SelectedChatFriend { get; set; } = [];
         
         public ObservableCollection<FriendUtils.ReceivedFriendRequest> ReceivedFriendRequests { get; set; } = [];
         public ObservableCollection<FriendUtils.SentFriendRequest> SentFriendRequests { get; set; } = [];
         
         public ObservableCollection<FriendUtils.User> BlockedUsers { get; set; } = [];
+        
+        public Dictionary<string, List<ChatUtils.ChatMessage>> ChatMessages { get; set; } = new();
         public string FriendRequestsAmountWithText { get; set; } = "Friend Requests (0)";
         public string LastPatch { get; set; } = string.Empty;
 
@@ -57,6 +64,16 @@ namespace GameLauncher.ViewModels
         public bool IsFriendMenuVisible { get; set; }
         public bool IsLoggedIn { get; set; }
         public bool IsAddingFriend { get; set; }
+
+        public bool NoChatSelected { get; set; } = true;
+        
+        public string CurrentTextMessage { get; set; } = string.Empty;
+
+        public bool IsLoadingMessages { get; set; }
+        
+        public WebSocketClient chatClient { get; set; }
+        
+        public UserUtils.User MainUser { get; set; }
         
         
         public void ChangeLoadingStatus(bool status)
@@ -264,6 +281,9 @@ namespace GameLauncher.ViewModels
         }
         
         public string EnteredFriendUsername { get; set; } = string.Empty;
+        public string OwnMessageColor { get; set; } = "#FF0000";
+        public string FriendMessageColor { get; set; } = "#0000FF";
+
 
         [RelayCommand]
         private async Task AcceptFriendRequest(string userId)
@@ -387,6 +407,21 @@ namespace GameLauncher.ViewModels
                 Console.WriteLine("Failed to remove friend: " + ex.Message);
             }
         }
+        
+        public async Task SendChatMessage(ChatUtils.ChatMessage message)
+        {
+            Console.WriteLine("Sending chat message");
+            try
+            {
+                var viewModel = this;
+                await ChatUtils.SendChatMessage(message, viewModel);
+            }
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to send chat message: " + ex.Message);
+                Console.WriteLine("Failed to send chat message: " + ex.Message);
+            }
+        }
 
         public void UpdateFriendRequestText()
         {
@@ -410,6 +445,38 @@ namespace GameLauncher.ViewModels
             OnPropertyChanged(nameof(ReceivedFriendRequests));
             OnPropertyChanged(nameof(BlockedUsers));
             UpdateFriendRequestText(); 
+        }
+
+        public void UpdateSelectedChat(FriendUtils.Friend friend)
+        {
+            OnPropertyChanged(nameof(FriendList));
+            Console.WriteLine($"Before Clear: {SelectedChatFriend.Count}");
+            SelectedChatFriend.Clear();
+            Console.WriteLine($"After Clear: {SelectedChatFriend.Count}");
+            SelectedChatFriend.Add(friend);
+            Console.WriteLine($"After ADD: {SelectedChatFriend.Count}");
+            Console.WriteLine("Selected chat friend: " + friend.DisplayName);
+            NoChatSelected = false;
+            OnPropertyChanged(nameof(NoChatSelected));
+            OnPropertyChanged(nameof(SelectedChatFriend));
+        }
+
+        public async Task LoadChatMessages(FriendUtils.Friend friend, int offset)
+        {
+            Console.WriteLine("Loading chat messages");
+            try
+            {
+                IsLoadingMessages = true;
+                var viewModel = this;
+                await ChatUtils.LoadChatMessages(friend, offset, viewModel);
+                IsLoadingMessages = false;
+            }
+            catch (Exception ex)
+            {
+                ToastNotification.Show("Failed to load chat messages: " + ex.Message);
+                Console.WriteLine("Failed to load chat messages: " + ex.Message);
+                IsLoadingMessages = false;
+            }
         }
     }
 }

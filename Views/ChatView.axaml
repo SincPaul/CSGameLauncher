@@ -1,0 +1,86 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:GameLauncher.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="vm:MainViewModel"
+             x:Class="GameLauncher.Views.ChatView">
+    
+    <Grid>
+        <Button Click="OpenChat">
+            <Svg Path="/Assets/Chat/chat.svg" Width="40" Height="40"></Svg>
+        </Button>
+        <Popup Name="ChatPopup"
+                IsOpen="False"
+                HorizontalAlignment="Center"
+                IsLightDismissEnabled="True"
+                VerticalAlignment="Center">
+            <Border Background="Teal"
+                    Padding="20">
+                <Grid RowDefinitions="Auto, Auto">
+                    <Grid ColumnDefinitions="100, *" RowDefinitions="Auto, *" IsVisible="{Binding IsServerConnectedAndUserLoggedIn}">
+                        <TextBlock Text="Chat"></TextBlock>
+                        <StackPanel Grid.Row="1" Grid.Column="0">
+                            <TextBlock Text="Friends"></TextBlock>
+                            <ListBox ItemsSource="{Binding FriendList}" Name="ItemParents">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Click="OpenChatWithFriend" Tag="{Binding }">
+                                            <Grid ColumnDefinitions="Auto, *">
+                                                <Svg Path="{Binding Status, StringFormat=/Assets/FriendAssets/OnlineStatus/{0}.svg}" Width="20" Height="20"></Svg>
+                                                <TextBlock Grid.Column="1" Text="{Binding DisplayName}"></TextBlock>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1">
+                            <TextBlock Text="Select a User on the left or add new friends to chat" IsVisible="{Binding NoChatSelected}"></TextBlock>
+                            <StackPanel IsVisible="{Binding !NoChatSelected}">
+                                <ItemsControl ItemsSource="{Binding SelectedChatFriend}" Name="ChatParent">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Border Background="Gray" Padding="10" Margin="0 0 0 10">
+                                                    <Grid RowDefinitions="Auto, *, Auto" ColumnDefinitions="*, Auto">
+                                                    <TextBlock Text="{Binding DisplayName}"></TextBlock>
+                                                    
+                                                    <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding ChatMessages}" Name="MessagesParent" 
+                                                             ScrollViewer.VerticalScrollBarVisibility="Auto" MaxHeight="300">
+                                                        <ListBox.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <ListBoxItem Background="{Binding Color}">
+                                                                    <TextBlock Text="{Binding Message}" ></TextBlock>
+                                                                </ListBoxItem>
+                                                            </DataTemplate>
+                                                        </ListBox.ItemTemplate>
+                                                    </ListBox>
+                                                    
+                                                    <TextBox Grid.Row="2" Grid.Column="0" Text="{Binding #ChatParent.((vm:MainViewModel)DataContext).CurrentTextMessage, UpdateSourceTrigger=PropertyChanged}" Watermark="Enter your Message"></TextBox>
+                                                    <Button Grid.Row="2" Grid.Column="1" Content="Send" 
+                                                            Click="SendChatMessage">
+                                                    </Button>
+                                                </Grid>
+                                                </Border>
+                                            </Grid>
+                                            
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                    <Grid Grid.Row="0" IsVisible="{Binding IsServerConnectedAndUserNotLoggedIn}" RowDefinitions="*, *, Auto">
+                            <TextBlock Grid.Row="0" Text="Please log in or Register to view and manage your Friends"></TextBlock>
+                            <Button Grid.Row="1" Content="Log In" Click="LogIn"></Button>
+                            <Button Grid.Row="2" Content="Register" Click="Register"></Button>
+                    </Grid>
+                    <TextBlock Grid.Row="0" Text="Couldnt connect to the Server, please try again later" IsVisible="{Binding !IsServerConnected}"></TextBlock>
+                    <Button Grid.Row="1" Content="Close" Click="CloseChat" Margin="0,10,0,0"/>
+                </Grid>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

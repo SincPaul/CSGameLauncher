@@ -11,7 +11,8 @@ namespace GameLauncher.Views
 {
     public partial class MainView : Window
     {
-        
+        private static ObservableCollection<ServerCommunication.GameStats> Games { get; } = [];
+
 
         public MainView()
         {
@@ -33,6 +34,10 @@ namespace GameLauncher.Views
                 if (DataContext is not MainViewModel viewModel) return;
                 _ = Task.Run(() => ServerCommunication.HandleWebsockets(viewModel));
                 Console.WriteLine(viewModel);
+                await GameUtils.LoadGamesAsync(viewModel, Games);
+                viewModel.ShowGames(Games);
+                viewModel.ChangeLoadingStatus(false);
+
             }
             catch (Exception e)
             {

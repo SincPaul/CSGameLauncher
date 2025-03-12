@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -73,7 +74,7 @@ namespace GameLauncher.Functions
             await serverClient.ConnectAsync(address1);
             
             address = $"{WebsocketAddress}/friends";
-
+            var address2 = address;
             var friendClient = new WebSocketClient();
             friendClient.Option.SetRequestHeader("Cookie", UserUtils.UserCookie);
             friendClient.OnMessage += message =>
@@ -91,11 +92,41 @@ namespace GameLauncher.Functions
             friendClient.OnDisconnect += async () =>
             {
                 Console.WriteLine("Disconnected from friends.");
+                FriendUtils.DisableFriendsStuff(viewModel);
                 await Task.Delay(ReconnectDelay);
-                await friendClient.ReconnectAsync(address);
+                await friendClient.ReconnectAsync(address2);
             };
-            await friendClient.ConnectAsync(address);
+            await friendClient.ConnectAsync(address2);
+            viewModel.friendClient = friendClient;
             
+            address = $"{WebsocketAddress}/chat";
+            var address3 = address;
+            
+            var chatClient = new WebSocketClient();
+            chatClient.Option.SetRequestHeader("Cookie", UserUtils.UserCookie);
+            chatClient.OnMessage += message =>
+            {
+                if (message == "pong") return;
+                Console.WriteLine("Received Chat message: " + message);
+                ChatUtils.HandleChatWsMessage(message, viewModel);
+            };
+            chatClient.OnConnect += async () =>
+            {
+                Console.WriteLine("Connected to chat.");
+                viewModel.chatClient = chatClient;
+            };
+            chatClient.OnDisconnect += async () =>
+            {
+                Console.WriteLine("Disconnected from chat.");
+                await Task.Delay(ReconnectDelay);
+                await chatClient.ReconnectAsync(address3);
+            };
+            chatClient.OnSent += async () =>
+            {
+                //Console.WriteLine("Sent message to chat.");
+            };
+            await chatClient.ConnectAsync(address3);
+
 
             //if (!viewModel.IsServerConnected)
             //{
@@ -486,12 +517,14 @@ namespace GameLauncher.Functions
     {
         private ClientWebSocket _socket;
         public ClientWebSocketOptions Option => _socket.Options;
+
         private readonly TimeSpan _pingInterval = TimeSpan.FromSeconds(5);
         private Task _pingTask;
         public event Action<string> OnMessage;
         public event Action OnDisconnect;
         public event Action OnConnect;
         public event Action OnClose;
+        public event Action OnSent;
 
         public WebSocketClient()
         {
@@ -535,13 +568,16 @@ namespace GameLauncher.Functions
         {
             try
             {
+                //Console.WriteLine("Sending message: " + message);
                 var buffer = Encoding.UTF8.GetBytes(message);
                 await _socket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true,
                     CancellationToken.None);
+                OnSent?.Invoke();
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Error sending message: " + ex.Message);
+                
             }
         }
         
@@ -550,10 +586,19 @@ namespace GameLauncher.Functions
             var buffer = new byte[1024];
             try
             {
+                Console.WriteLine("Listening for messages...");
                 while (_socket.State == WebSocketState.Open)
                 {
-                    var result = await _socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    using var memoryStream = new MemoryStream();
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await _socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                        memoryStream.Write(buffer, 0, result.Count);
+                    } while (!result.EndOfMessage);
+        
+                    var message = Encoding.UTF8.GetString(memoryStream.ToArray());
+                    //Console.WriteLine("Received message: " + message);
                     OnMessage?.Invoke(message);
                 }
             }
@@ -561,7 +606,6 @@ namespace GameLauncher.Functions
             {
                 Console.WriteLine("Error receiving message: " + ex.Message);
                 OnDisconnect?.Invoke();
-                // reconnect
             }
         }
 
@@ -590,7 +634,7 @@ namespace GameLauncher.Functions
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error closing websocket: " + ex.Message);
+                Console.WriteLine("Error reconnecting to websocket: " + ex.Message);
             }
 
             _socket = new ClientWebSocket();

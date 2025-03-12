@@ -68,5 +68,9 @@
         <AvaloniaResource Include="Assets\FriendAssets\friends.svg" />
         <None Remove="Assets\General\options.svg" />
         <AvaloniaResource Include="Assets\General\options.svg" />
+        <None Remove="Assets\Chat\chat.svg" />
+        <AvaloniaResource Include="Assets\Chat\chat.svg" />
+        <None Remove="Assets\FriendAssets\OnlineStatus\online.svg" />
+        <AvaloniaResource Include="Assets\FriendAssets\OnlineStatus\online.svg" />
     </ItemGroup>
 </Project>

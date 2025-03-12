@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using GameLauncher.ViewModels;
 using GameLauncher.Windows;
+using Tmds.DBus.Protocol;
 
 namespace GameLauncher.Functions;
 
@@ -20,7 +21,11 @@ public class FriendUtils
         public required string UserId { get; set; }
         public required string Status { get; set; }
         public required int FriendsSinceTimestamp { get; set; }
+
+        public ObservableCollection<ChatUtils.ChatMessage> ChatMessages { get; set; } = [];
     }
+    
+    
     
     public class User
     {
@@ -138,7 +143,9 @@ public class FriendUtils
         var friends = GetFriends();
         Console.WriteLine("Friends: " + friends);
         viewmodel.FriendList.Clear();
+        viewmodel.UpdateFriendViews();  
         foreach (var friend in friends) {
+            if (viewmodel.FriendList.Contains(friend)) continue;
             viewmodel.FriendList.Add(friend);
         }
         var receivedFriendRequests = GetReceivedFriendRequests();
@@ -162,6 +169,33 @@ public class FriendUtils
             viewmodel.BlockedUsers.Add(blockedUser);
         }
         viewmodel.UpdateFriendViews();
+        await Task.Delay(2000);
+        await GetFriendsOnlineStatus(viewmodel);
+    }
+    
+    public static void DisableFriendsStuff(MainViewModel viewModel)
+    {
+        viewModel.FriendList.Clear();
+        viewModel.ReceivedFriendRequests.Clear();
+        viewModel.SentFriendRequests.Clear();
+        viewModel.BlockedUsers.Clear();
+        viewModel.UpdateFriendViews();
+    }
+
+    private static async Task GetFriendsOnlineStatus(MainViewModel viewModel)
+    {
+        var friendWebsocket = viewModel.friendClient;
+
+        foreach (var friend in viewModel.FriendList)
+        {
+            var wsMessage = new
+            {
+                wstype = "friends",
+                type = "get_friend_status",
+                userId = friend.UserId
+            };
+            await friendWebsocket.SendAsync(JsonSerializer.Serialize(wsMessage));
+        }
     }
     
     public static async Task SentFriendRequestToServer(string username, MainViewModel viewModel)
@@ -224,7 +258,7 @@ public class FriendUtils
             json = Uri.UnescapeDataString(json);
             var friend = JsonSerializer.Deserialize<Friend>(json);
             Console.WriteLine("Friend requests: " + friend);
-            if (friend != null)
+            if (friend != null && viewModel.FriendList.All(f => f.UserId != friend.UserId))
             {
                 viewModel.FriendList.Add(friend);
                 Console.WriteLine("Accepted Friend Request.");
@@ -457,10 +491,16 @@ public class FriendUtils
 
     public static void HandleFriendWsMessage(string message, MainViewModel viewModel)
     {
+        if (string.IsNullOrWhiteSpace(message) || message[0] != '{')
+        {
+            Console.WriteLine("Ignoring non-JSON message: " + message);
+            return;
+        }
+        
         var jsonDocument = JsonDocument.Parse(message);
         var type = jsonDocument.RootElement.GetProperty("type").GetString();
     
-        var handlers = new Dictionary<string, Action<JsonDocument, MainViewModel>>
+        var handlers = new Dictionary<string, System.Action<JsonDocument, MainViewModel>>
         {
             { "friend_status", HandleFriendStatusMessage },
             { "friend_request_accepted", HandleAcceptedFriendRequest },
@@ -621,4 +661,6 @@ public class FriendUtils
             Console.WriteLine("Failed to handle friend removed: " + ex.Message);
         }
     }
+
+    
 }

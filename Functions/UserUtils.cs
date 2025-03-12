@@ -44,6 +44,7 @@ public class UserUtils
         Console.WriteLine("User created.");
         Console.WriteLine("User: " + mainUser.username);
         viewModel.SetLoggedIn(true);
+        viewModel.MainUser = mainUser;
         // ConnectToFriendsWs(decryptedCookie, viewModel);
         // await FriendUtils.LoadFriendStuff(viewModel);
     }
